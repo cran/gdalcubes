@@ -26,6 +26,8 @@
 
 #include "cube.h"
 
+namespace gdalcubes {
+
 /**
  * @brief A data cube that streams data from another data cube to stdin of an external program and captures stdout as result
  *
@@ -67,9 +69,9 @@ class stream_cube : public cube {
 
         std::shared_ptr<chunk_data> c0;
         if (_file_streaming) {
-            c0 = stream_chunk_file(dummy_chunk);
+            c0 = stream_chunk_file(dummy_chunk, 0);
         } else {
-            c0 = stream_chunk_stdin(dummy_chunk);
+            c0 = stream_chunk_stdin(dummy_chunk, 0);
         }
 
         for (uint16_t ib = 0; ib < c0->size()[0]; ++ib) {
@@ -129,9 +131,9 @@ class stream_cube : public cube {
     bool _keep_input_nx;
 
    private:
-    std::shared_ptr<chunk_data> stream_chunk_stdin(std::shared_ptr<chunk_data> data);
+    std::shared_ptr<chunk_data> stream_chunk_stdin(std::shared_ptr<chunk_data> data, chunkid_t id);
 
-    std::shared_ptr<chunk_data> stream_chunk_file(std::shared_ptr<chunk_data> data);
+    std::shared_ptr<chunk_data> stream_chunk_file(std::shared_ptr<chunk_data> data, chunkid_t id);
 
     virtual void set_st_reference(std::shared_ptr<cube_st_reference> stref) override {
         _st_ref->win() = stref->win();
@@ -147,5 +149,7 @@ class stream_cube : public cube {
         if (!_keep_input_nx) _st_ref->nx() = count_chunks_x();
     }
 };
+
+}  // namespace gdalcubes
 
 #endif  //STREAM_H

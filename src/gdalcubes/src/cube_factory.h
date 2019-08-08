@@ -29,6 +29,8 @@
 #include <memory>
 #include "cube.h"
 
+namespace gdalcubes {
+
 /**
  * @brief Factory to create (nested) cubes from its JSON representation
  */
@@ -54,7 +56,6 @@ class cube_factory {
      *
      * @param type_name unique name for cube type
      * @param generator function to create an object from a json definition
-     * @todo implement this function
      */
     void register_cube_type(std::string type_name, std::function<std::shared_ptr<cube>(nlohmann::json&)> generator);
 
@@ -80,5 +81,7 @@ class cube_factory {
 
     std::map<std::string, std::function<std::shared_ptr<cube>(nlohmann::json&)>> cube_generators;
 };
+
+}  // namespace gdalcubes
 
 #endif  //CUBE_FACTORY_H

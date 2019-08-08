@@ -23,6 +23,8 @@
 */
 #include "reduce.h"
 
+namespace gdalcubes {
+
 struct reducer {
     virtual ~reducer() {}
 
@@ -372,7 +374,7 @@ std::shared_ptr<chunk_data> reduce_cube::read_chunk(chunkid_t id) {
     }
 
     r->finalize(out);
-    if (r != nullptr) delete r;
+    if (r) delete r;
 
     return out;
 }
@@ -456,3 +458,5 @@ void reduce_cube::write_gdal_image(std::string path, std::string format, std::ve
     p->apply(shared_from_this(), f);
     prg->finalize();
 }
+
+}  // namespace gdalcubes

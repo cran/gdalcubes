@@ -133,7 +133,7 @@ plot.cube  <-
         val <- NULL
         if (is.null(zlim)) {
           for (b in vars) {
-            dat <- ncdf4::ncvar_get(f, b)
+            dat <- ncdf4::ncvar_get(f, b, raw_datavals = TRUE)
             val = c(val, as.vector(dat)[seq(1, size[2], length.out = min(10000 %/% size[1], size[2]))])
           }
           #zlim <- quantile(val, c(0.05, 0.95),na.rm = TRUE)
@@ -163,7 +163,7 @@ plot.cube  <-
         
         if (length(vars) > 1) {
           for (bi in 1:length(vars)) {
-            dat <- ncdf4::ncvar_get(f, vars[bi])
+            dat <- ncdf4::ncvar_get(f, vars[bi], raw_datavals = TRUE)
             lines(dat, col = col[bi], type = "b", ...)
           }
         }
@@ -212,7 +212,7 @@ plot.cube  <-
           0, irow * icol - size[1]
         )), irow, icol, byrow = T), respect = TRUE)
         for (b in vars) {
-          dat <- ncdf4::ncvar_get(f, b)
+          dat <- ncdf4::ncvar_get(f, b, raw_datavals = TRUE)
           if (!is.null(zlim)) {
             plot(
               dat,
@@ -593,12 +593,12 @@ plot.cube  <-
       
       
       
-      dimsx = seq(dims$low[3], dims$high[3], length.out = size[4])
-      dimsy = seq(dims$low[2], dims$high[2], length.out = size[3])
-      asp = ((dims$high[2] - dims$low[2]) / dims$size[2]) / ((dims$high[3] - dims$low[3]) /
-                                                               dims$size[3])
-      ylim = c(dims$low[2], dims$high[2])
-      xlim = c(dims$low[3], dims$high[3])
+      dimsx = seq(dims$x$low, dims$x$high, length.out = size[4])
+      dimsy = seq(dims$y$low, dims$y$high, length.out = size[3])
+      asp = ((dims$y$high - dims$y$low) / dims$y$count) / ((dims$x$high - dims$x$low) /
+                                                               dims$x$count)
+      ylim = c(dims$y$low, dims$y$high)
+      xlim = c(dims$x$low, dims$x$high)
       
       #dimst = seq(from = dims$low[1], by = (dims$high[1] - dims$low[1] + 1) %/% size[2], length.out = size[2])
       
@@ -617,7 +617,7 @@ plot.cube  <-
                     next
                 }
               }
-              dat <- ncdf4::ncvar_get(f, b)
+              dat <- ncdf4::ncvar_get(f, b, raw_datavals = TRUE)
               if (length(dim(dat)) == 2) {
                 val = c(val, as.vector(dat)[seq(1,
                                                 prod(size[2:4]),
@@ -648,9 +648,9 @@ plot.cube  <-
       
       
       if (!is.null(rgb)) {
-        dat_R <- ncdf4::ncvar_get(f, vars[1])
-        dat_G <- ncdf4::ncvar_get(f, vars[2])
-        dat_B <- ncdf4::ncvar_get(f, vars[3])
+        dat_R <- ncdf4::ncvar_get(f, vars[1], raw_datavals = TRUE)
+        dat_G <- ncdf4::ncvar_get(f, vars[2], raw_datavals = TRUE)
+        dat_B <- ncdf4::ncvar_get(f, vars[3], raw_datavals = TRUE)
         
         
         rng_R <- range(dat_R, na.rm = T, finite = T)
@@ -669,9 +669,9 @@ plot.cube  <-
         dat_G <- (dat_G - offset) / scale
         dat_B <- (dat_B - offset) / scale
         
-        dat_R[which(is.nan(dat_R) , arr.ind = T)] <- 1
-        dat_G[which(is.nan(dat_G) , arr.ind = T)] <- 1
-        dat_B[which(is.nan(dat_B) , arr.ind = T)] <- 1
+        dat_R[which(is.na(dat_R) , arr.ind = T)] <- 1
+        dat_G[which(is.na(dat_G) , arr.ind = T)] <- 1
+        dat_B[which(is.na(dat_B) , arr.ind = T)] <- 1
         
         
         dat_R[which(dat_R < 0 , arr.ind = T)] <- 0
@@ -745,7 +745,7 @@ plot.cube  <-
       else {
         for (b in vars) {
           #ncdf4::ncvar_get(f, b, start=c(t,1,1), count = c(1, f$dim[[2]]$len,f$dim[[3]]$len))
-          dat <- ncdf4::ncvar_get(f, b)
+          dat <- ncdf4::ncvar_get(f, b, raw_datavals = TRUE)
           
           xaxt = "s"
           yaxt = "s"

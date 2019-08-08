@@ -30,6 +30,8 @@
 #include "config.h"
 #include "view.h"
 
+namespace gdalcubes {
+
 typedef std::array<uint32_t, 4> cube_coordinate_btyx;
 typedef std::array<uint32_t, 3> cube_coordinate_tyx;
 typedef std::array<uint32_t, 4> cube_size_btyx;
@@ -41,7 +43,114 @@ typedef std::array<uint32_t, 3> chunk_size_tyx;
 
 typedef uint32_t chunkid_t;
 
+/**
+ * Data structure for defining packed data exports (dividing and adding data values by a scale and offset value
+ * respectively, before conversion to smaller integer types during the export.
+ */
+struct packed_export {
+    // Enum definitions for output types, PACK_NONE will not
+    // apply any packing. PACK_FLOAT will convert 8 byte doubles
+    // to 4 byte floats but IGNORE provided scale and offset values
+    enum class packing_type {
+        PACK_NONE,
+        PACK_UINT8,
+        PACK_UINT16,
+        PACK_UINT32,
+        PACK_INT16,
+        PACK_INT32,
+        PACK_FLOAT32
+    };
+    packing_type type;
+
+    /**
+     * A vector of per-band scale factors. Must have size() == 1 or size() == nbands
+     * If the vector contains only one element, the same scale factor is assumed
+     * for all bands.
+     */
+    std::vector<double> scale;
+
+    /**
+     * A vector of per-band offset values. Must have size() == 1 or size() == nbands
+     * If the vector contains only one element, the same offset value is assumed
+     * for all bands.
+     */
+    std::vector<double> offset;
+
+    /**
+     * A vector of new nodata values. Must have size() == 1 or size() == nbands
+     * If the vector contains only one element, the same nodata value is assumed
+     * for all bands.
+     */
+    std::vector<double> nodata;
+
+    static packed_export make_none() {
+        packed_export out;
+        out.type = packing_type::PACK_NONE;
+        return out;
+    }
+
+    static packed_export make_float32() {
+        packed_export out;
+        out.type = packing_type::PACK_FLOAT32;
+        out.scale = {{1}};
+        out.offset = {{0}};
+        out.nodata = {{std::numeric_limits<int16_t>::lowest()}};
+        return out;
+    }
+
+    static packed_export make_uint16(double scale, double offset, double nodata) {
+        packed_export out;
+        out.type = packing_type::PACK_UINT16;
+        out.scale = {{scale}};
+        out.offset = {{offset}};
+        out.nodata = {{nodata}};
+        return out;
+    }
+
+    static packed_export make_uint16(std::vector<double> scale, std::vector<double> offset, std::vector<double> nodata) {
+        packed_export out;
+        out.type = packing_type::PACK_UINT16;
+        out.scale = scale;
+        out.offset = offset;
+        out.nodata = nodata;
+        return out;
+    }
+
+    static packed_export make_int16(double scale, double offset) {
+        packed_export out;
+        out.type = packing_type::PACK_UINT16;
+        out.scale = {{scale}};
+        out.offset = {{offset}};
+        return out;
+    }
+
+    static packed_export make_int16(std::vector<double> scale, std::vector<double> offset) {
+        packed_export out;
+        out.type = packing_type::PACK_INT16;
+        out.scale = scale;
+        out.offset = offset;
+        return out;
+    }
+
+    static packed_export make_uint8(double scale, double offset) {
+        packed_export out;
+        out.type = packing_type::PACK_UINT16;
+        out.scale = {{scale}};
+        out.offset = {{offset}};
+        return out;
+    }
+
+    static packed_export make_uint8(std::vector<double> scale, std::vector<double> offset) {
+        packed_export out;
+        out.type = packing_type::PACK_UINT8;
+        out.scale = scale;
+        out.offset = offset;
+        return out;
+    }
+};
+
 class cube;
+
 class chunk_data;
 
 /**
@@ -57,7 +166,8 @@ class chunk_processor {
      * @param f function to be applied over all chunks of c, the function gets the chunk_id, the actual chunk data, and a mutex object as input. The latter is only needed
      * for parallel chunk processing, e.g., for synchronous file writing.
      */
-    virtual void apply(std::shared_ptr<cube> c, std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex&)> f) = 0;
+    virtual void
+    apply(std::shared_ptr<cube> c, std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex &)> f) = 0;
 };
 
 /**
@@ -68,7 +178,8 @@ class chunk_processor_singlethread : public chunk_processor {
     /**
      * @copydoc chunk_processor::apply
      */
-    void apply(std::shared_ptr<cube> c, std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex&)> f) override;
+    void apply(std::shared_ptr<cube> c,
+               std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex &)> f) override;
 };
 
 /**
@@ -85,7 +196,8 @@ class chunk_processor_multithread : public chunk_processor {
     /**
     * @copydoc chunk_processor::apply
     */
-    void apply(std::shared_ptr<cube> c, std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex&)> f) override;
+    void apply(std::shared_ptr<cube> c,
+               std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex &)> f) override;
 
     /**
      * Query the number of threads to be used in parallel chunk processing
@@ -102,6 +214,7 @@ class chunk_processor_multithread : public chunk_processor {
  */
 struct band {
     band(std::string name) : name(name), no_data_value(std::to_string(NAN)), offset(0), scale(1), unit(""), type("float64") {}
+
     std::string name;
     std::string no_data_value;
     double offset;
@@ -229,7 +342,7 @@ class chunk_data {
      * remove / add vector elements if you don't know exactly what you do.
      * @return void pointer pointing to the data buffer
      */
-    inline void* buf() { return _buf; }
+    inline void *buf() { return _buf; }
 
     /**
      * @brief (Re)set the raw buffer where the data is stored in memory
@@ -239,7 +352,7 @@ class chunk_data {
      *
      * @param b new buffer object, this class takes the ownership, i.e., eventually std::frees memory automatically in the destructor.
      */
-    inline void buf(void* b) {
+    inline void buf(void *b) {
         if (_buf && _size[0] * _size[1] * _size[2] * _size[3] > 0) std::free(_buf);
         _buf = b;
     }
@@ -262,7 +375,7 @@ class chunk_data {
     inline void size(coords_nd<uint32_t, 4> s) { _size = s; }
 
    private:
-    void* _buf;
+    void *_buf;
     chunk_size_btyx _size;
 };
 
@@ -286,8 +399,6 @@ class cube : public std::enable_shared_from_this<cube> {
      */
     cube() : _st_ref(nullptr), _chunk_size(), _bands() {
         _chunk_size = {16, 256, 256};
-
-        // TODO: add bands
     }
 
     /**
@@ -609,20 +720,58 @@ class cube : public std::enable_shared_from_this<cube> {
     }
 
     /**
-     * @brief Write a cube as a set of GeoTIFF files under a given directory
+     * @brief Write a data cube as a set of GeoTIFF files under a given directory
      *
      * @param dir directory where to store the files
      * @param p chunk processor instance, defaults to the global configuration
      */
-    void write_gtiff_directory(std::string dir, std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
+    void write_chunks_gtiff(std::string dir,
+                            std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
 
     /**
-     * Export a cube to a single NetCDF file
-     * @param path path of the target file
-     * @param compression_level deflate level, 0=no compression, 1= fast, 9 = small
+     * @brief Writes a data cube as a collection of GeoTIFF files
+     *
+     * Each time slice of the cube will be written to one GeoTIFF file.
+
+     * @param dir output path
+     * @param prefix name prefix for created files
+     * @param overviews generate GDAL overview images
+     * @param cog write cloud-optmized GeoTIFFs (forces overviews = true)
+     * @param overview_resampling resampling algorithm used to generate overviews (see https://gdal.org/programs/gdaladdo.html)
+     * @param additional creation_options key value pairs passed to GDAL as GTiff creation options (see https://gdal.org/drivers/raster/gtiff.html)
+     * @param packing reduce size of output tile with packing (apply scale + offset and use smaller integer data types)
      * @param p chunk processor instance, defaults to the global configuration
+     *
+     * @note Overview levels will be chosen by halving the number of pixels until the larger dimension
+     * has less than 256 pixels.
+     *
+     * @note Depending on `overviews` and `cog` GeoTIFFs created and postprocessed stepwise:
+     * 1. time slices of cubes of the cube are exported as tiled normal GeoTIFFs
+     * 2. Overviews are generated (internal)
+     * 3. A new copy of the TIF with overviews is created, moving the IFDs of overviews to the beginning of the file (using gdal_translate -co COPY_SRC_OVERVIEWS=YES)
+     * It seems not possible to generate COGs fomr in memory data without temporal copy, However,
+     * improvements are very welcome (maybe the COG driver of GDAL > 3.1 helps?).
      */
-    void write_netcdf_file(std::string path, uint8_t compression_level = 0, std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
+    void write_tif_collection(std::string dir, std::string prefix = "",
+                              bool overviews = false, bool cog = false,
+                              std::map<std::string, std::string> creation_options = std::map<std::string, std::string>(),
+                              std::string overview_resampling = "NEAREST",
+                              packed_export packing = packed_export::make_none(), std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
+
+    /**
+     * Write a data cube as a single netCDF file
+     * @param path path of the target file
+     * @param compression_level deflate level, 0 = no compression, 1 = fast, 9 = small
+     * @param with_VRT additional write VRT files for time slices that are easier to display, e.g., in QGIS
+     * @param write_bounds boolean, if true, variables time_bnds, y_bnds, x_bnds per dimension values will be added
+     * @param packing reduce size of output tile with packing (apply scale + offset and use smaller integer data types)
+     * @param p chunk processor instance, defaults to the global configuration
+     *
+     * @note packing is not yet implemented
+     */
+    void write_netcdf_file(std::string path, uint8_t compression_level = 0,
+                           bool with_VRT = false, bool write_bounds = true, packed_export packing = packed_export::make_none(),
+                           std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
 
     /**
      * Get the cube's bands
@@ -694,7 +843,8 @@ class cube : public std::enable_shared_from_this<cube> {
     * @param stref new spatiotemporal reference / data cube view
     * @param scet set of cubes instances which have already been processed to avoid cyclic calls
     */
-    void update_st_reference_recursion(std::shared_ptr<cube_st_reference> stref, std::set<std::shared_ptr<cube>>& cset) {
+    void
+    update_st_reference_recursion(std::shared_ptr<cube_st_reference> stref, std::set<std::shared_ptr<cube>> &cset) {
         if (cset.count(shared_from_this()) > 0) return;
         this->set_st_reference(stref);
         cset.insert(shared_from_this());
@@ -711,5 +861,7 @@ class cube : public std::enable_shared_from_this<cube> {
         }
     }
 };
+
+}  // namespace gdalcubes
 
 #endif  //CUBE_H

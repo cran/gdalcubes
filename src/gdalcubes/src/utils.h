@@ -25,12 +25,15 @@
 #define UTILS_H
 
 #include <gdal_priv.h>
+#include <functional>  // std::hash
 #include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <random>
 #include <sstream>
 #include <string>
+
+namespace gdalcubes {
 
 /**
  * @brief A utility class for commonly used functions
@@ -148,6 +151,18 @@ class utils {
         ss << x;
         return ss.str();
     }
+
+    /**
+     * A simple (noncryptographic) hash function for strings using std::hash
+     * @param in input string
+     * @return hashed string
+     */
+    static std::string hash(std::string in) {
+        std::size_t str_hash = std::hash<std::string>{}(in);
+        return std::to_string(str_hash);
+    }
 };
+
+}  // namespace gdalcubes
 
 #endif  //UTILS_H

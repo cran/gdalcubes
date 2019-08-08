@@ -23,6 +23,8 @@
 */
 #include "reduce_time.h"
 
+namespace gdalcubes {
+
 struct reducer_singleband {
     virtual ~reducer_singleband() {}
 
@@ -501,7 +503,6 @@ std::shared_ptr<chunk_data> reduce_time_cube::read_chunk(chunkid_t id) {
         } else
             throw std::string("ERROR in reduce_time_cube::read_chunk(): Unknown reducer given");
 
-        // TODO: test whether index returned here is really equal to the index in the chunk storage
         uint16_t band_idx_in = _in_cube->bands().get_index(_reducer_bands[i].second);
         r->init(out, band_idx_in, i, _in_cube);
 
@@ -605,3 +606,5 @@ void reduce_time_cube::write_gdal_image(std::string path, std::string format, st
     p->apply(shared_from_this(), f);
     prg->finalize();
 }
+
+}  // namespace gdalcubes
