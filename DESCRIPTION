@@ -1,7 +1,7 @@
 Package: gdalcubes
 Title: Earth Observation Data Cubes from Satellite Image Collections
-Version: 0.2.1
-Date: 2019-08-21
+Version: 0.2.2
+Date: 2019-10-15
 Authors@R: c(
     person(given = "Marius",
            family = "Appel",
@@ -46,7 +46,7 @@ Description: Processing collections of Earth observation images as on-demand mul
     exporting data cubes as 'netCDF' or 'GeoTIFF' files, and plotting.  The package implements lazy evaluation and 
     multithreading. All computational parts are implemented in C++, linking to the 'GDAL', 'netCDF', 'CURL', and 'SQLite' libraries. 
     See Appel and Pebesma (2019) <doi:10.3390/data4030092> for further details.
-Depends: R (>= 3.3.0)
+Depends: R (>= 3.4)
 Imports: Rcpp, RcppProgress, jsonlite, ncdf4
 License: MIT + file LICENSE
 URL: https://github.com/appelmar/gdalcubes_R
@@ -60,7 +60,7 @@ VignetteBuilder: knitr
 Copyright: file inst/COPYRIGHTS
 NeedsCompilation: yes
 SystemRequirements: cxx11, gdal, libgdal, libproj, libcurl, netcdf4
-Packaged: 2019-08-20 18:57:04 UTC; marius
+Packaged: 2019-10-15 06:55:12 UTC; marius
 Author: Marius Appel [aut, cre] (<https://orcid.org/0000-0001-5281-3896>),
   Edzer Pebesma [ctb] (<https://orcid.org/0000-0001-8049-7069>),
   Roger Bivand [ctb],
@@ -74,4 +74,4 @@ Author: Marius Appel [aut, cre] (<https://orcid.org/0000-0001-5281-3896>),
   Tomasz Kamiński [cph]
 Maintainer: Marius Appel <marius.appel@uni-muenster.de>
 Repository: CRAN
-Date/Publication: 2019-08-21 12:20:02 UTC
+Date/Publication: 2019-10-15 22:10:09 UTC

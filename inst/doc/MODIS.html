@@ -413,7 +413,7 @@ $(document).ready(function () {
 </div>
 <div id="downloading-the-sample-data" class="section level1">
 <h1>Downloading the sample data</h1>
-<p>We will use 8-daily land surface temperature from the MODIS product <a href="https://lpdaac.usgs.gov/products/mod11a2v006">MOD11A2</a> , covering western Europe (tiles v=13,14, h=03,04) from January to September 2018. The zip archive has approximately 600 megabytes. The code below downloads and unzips the data to the current working directory.</p>
+<p>We will use 8-daily land surface temperature from the MODIS product <a href="https://modis.gsfc.nasa.gov/data/dataprod/mod11.php">MOD11A2</a>, covering western Europe (tiles v=13,14, h=03,04) from January to September 2018. The zip archive has approximately 600 megabytes. The code below downloads and unzips the data to the current working directory.</p>
 <pre class="r"><code>dest_dir = tempdir()
 download.file(&quot;https://uni-muenster.sciebo.de/s/eP9E6OIkQbXrmsY/download&quot;, destfile=file.path(dest_dir, &quot;MOD11A2.zip&quot;),mode = &quot;wb&quot;)
 unzip(file.path(dest_dir, &quot;MOD11A2.zip&quot;), exdir = file.path(dest_dir,&quot;MOD11A2&quot;))
@@ -423,7 +423,7 @@ unlink(file.path(dest_dir, &quot;MOD11A2.zip&quot;))</code></pre>
 <h1>Creating an image collection</h1>
 <p>As a first step, we must combine the set of files for the first MODIS product (MOD11A2) in a single <em>image collection</em>. The image collection is a simple index, pointing to files and storing the spatial extent, spatial reference system, aquisition date/time of images and how files relate to image bands. The package comes with a set of predefined rules (called <em>image collection formats</em>), how this information can be extracted from filenames for selected EO products. A list of available collection formats including a short description can be printed with:</p>
 <pre class="r"><code>library(gdalcubes)
-## Using gdalcubes library version 0.2.1
+## Using gdalcubes library version 0.2.2
 collection_formats()
 ##    CHIRPS_v2_0_daily_p05_tif | Image collection format for CHIRPS v 2.0
 ##                              | daily global precipitation dataset (0.05
@@ -491,24 +491,19 @@ collection_formats()
 ##                              | [TAGS: Sentinel, ESA, Flat Reflectance,
 ##                              | Theia]</code></pre>
 <p>In this case, <code>MxD11A2</code> is the correct format for our datasets. Internally, collection formats are defined in relatively simple JSON files, presets for other products will be added continuously.</p>
-<p>To create the image collection, we must pass a list of our files and the collection format to the <code>create_image_collection()</code> function. However, since MODIS comes as HDF4 files where GDAL interprets bands as subdatasets, reading the data with GDAL is little more complex. Instead of just filenames (as it would work for Landsat or Sentinel 2 imagery), we will not only provide filenames, but the subdataset names. For MOD11A2, the pattern for the subdatasets is <code>HDF4_EOS:EOS_GRID:&quot;/path/to/file&quot;:MODIS_Grid_8Day_1km_LST:BAND</code>, where <code>BAND</code> can be e.g. “LST_Day_1km”. The code below combines all files with all bands and adds subdataset identifiers to generate a character vector of GDAL datasets, which then can be passed as first argument to <code>create_image_collection()</code>. The second argument here referes to the image collection format and the third argument provides the name of the output image collection file (which is simply an SQLite database).</p>
+<p>To create the image collection, we must pass a list of our files and the collection format to the <code>create_image_collection()</code> function. The code below finds all files as character vector of GDAL datasets, which then can be passed as first argument to <code>create_image_collection()</code>. The second argument here referes to the image collection format and the third argument provides the name of the output image collection file (which is simply an SQLite database). The collection format also knows that bands are stored as subdatasets in the HDF files.</p>
 <pre class="r"><code>img_col_file = tempfile(fileext=&quot;.db&quot;)
-file_subdatasets = expand.grid(file=list.files(file.path(dest_dir,&quot;MOD11A2&quot;), pattern=&quot;.hdf$&quot;, full.names = TRUE), 
-            subdataset=c(&quot;LST_Day_1km&quot;, &quot;QC_Day&quot;, &quot;Day_view_time&quot;, &quot;LST_Night_1km&quot;,
-                        &quot;QC_Night&quot;, &quot;Night_view_time&quot;, &quot;Emis_31&quot;, &quot;Emis_32&quot;))
-
-gdal_datasets = paste(&quot;HDF4_EOS:EOS_GRID:\&quot;&quot;, file_subdatasets$file, &quot;\&quot;:MODIS_Grid_8Day_1km_LST:&quot;, file_subdatasets$subdataset, sep=&quot;&quot;)
-
-create_image_collection(gdal_datasets, &quot;MxD11A2&quot;, img_col_file)
+files = list.files(file.path(dest_dir,&quot;MOD11A2&quot;), pattern=&quot;.hdf$&quot;, full.names = TRUE)
+create_image_collection(files, &quot;MxD11A2&quot;, img_col_file)
 ## A GDAL image collection object, referencing 140 images with 8  bands
 ## Images:
 ##                                                                name
-## 1 /tmp/RtmpAjGT4Q/MOD11A2/MOD11A2.A2018001.h17v03.006.2018011145329
-## 2 /tmp/RtmpAjGT4Q/MOD11A2/MOD11A2.A2018001.h17v04.006.2018011145438
-## 3 /tmp/RtmpAjGT4Q/MOD11A2/MOD11A2.A2018001.h18v03.006.2018011145428
-## 4 /tmp/RtmpAjGT4Q/MOD11A2/MOD11A2.A2018001.h18v04.006.2018011145326
-## 5 /tmp/RtmpAjGT4Q/MOD11A2/MOD11A2.A2018009.h17v03.006.2018018034330
-## 6 /tmp/RtmpAjGT4Q/MOD11A2/MOD11A2.A2018009.h17v04.006.2018018034246
+## 1 /tmp/RtmphaWSyv/MOD11A2/MOD11A2.A2018001.h17v03.006.2018011145329
+## 2 /tmp/RtmphaWSyv/MOD11A2/MOD11A2.A2018001.h17v04.006.2018011145438
+## 3 /tmp/RtmphaWSyv/MOD11A2/MOD11A2.A2018001.h18v03.006.2018011145428
+## 4 /tmp/RtmphaWSyv/MOD11A2/MOD11A2.A2018001.h18v04.006.2018011145326
+## 5 /tmp/RtmphaWSyv/MOD11A2/MOD11A2.A2018009.h17v03.006.2018018034330
+## 6 /tmp/RtmphaWSyv/MOD11A2/MOD11A2.A2018009.h17v04.006.2018018034246
 ##        left top bottom    right            datetime
 ## 1 -20.00000  60     50  0.00000 2018-01-01T00:00:00
 ## 2 -15.55724  50     40  0.00000 2018-01-01T00:00:00

@@ -1,3 +1,11 @@
+# gdalcubes 0.2.2 (2019-10-15)
+
+* support for GDAL subdatasets in collection format
+* MODIS collection formats now use subdatasets automatically
+* fixed configure.ac for R-devel
+* add `query_points()` to query data cube values at irregular spatiotemporal points
+
+
 # gdalcubes 0.2.1 (2019-08-21)
 
 * new collection format for PlanetScope data

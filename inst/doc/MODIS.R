@@ -18,13 +18,8 @@ collection_formats()
 
 ## ------------------------------------------------------------------------
 img_col_file = tempfile(fileext=".db")
-file_subdatasets = expand.grid(file=list.files(file.path(dest_dir,"MOD11A2"), pattern=".hdf$", full.names = TRUE), 
-            subdataset=c("LST_Day_1km", "QC_Day", "Day_view_time", "LST_Night_1km",
-                        "QC_Night", "Night_view_time", "Emis_31", "Emis_32"))
-
-gdal_datasets = paste("HDF4_EOS:EOS_GRID:\"", file_subdatasets$file, "\":MODIS_Grid_8Day_1km_LST:", file_subdatasets$subdataset, sep="")
-
-create_image_collection(gdal_datasets, "MxD11A2", img_col_file)
+files = list.files(file.path(dest_dir,"MOD11A2"), pattern=".hdf$", full.names = TRUE)
+create_image_collection(files, "MxD11A2", img_col_file)
 
 ## ------------------------------------------------------------------------
 x = raster_cube(image_collection(img_col_file))
