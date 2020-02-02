@@ -423,7 +423,7 @@ unlink(file.path(dest_dir, &quot;MOD11A2.zip&quot;))</code></pre>
 <h1>Creating an image collection</h1>
 <p>As a first step, we must combine the set of files for the first MODIS product (MOD11A2) in a single <em>image collection</em>. The image collection is a simple index, pointing to files and storing the spatial extent, spatial reference system, aquisition date/time of images and how files relate to image bands. The package comes with a set of predefined rules (called <em>image collection formats</em>), how this information can be extracted from filenames for selected EO products. A list of available collection formats including a short description can be printed with:</p>
 <pre class="r"><code>library(gdalcubes)
-## Using gdalcubes library version 0.2.3
+## Using gdalcubes library version 0.2.4
 collection_formats()
 ##    CHIRPS_v2_0_daily_p05_tif | Image collection format for CHIRPS v 2.0
 ##                              | daily global precipitation dataset (0.05
@@ -504,12 +504,12 @@ create_image_collection(files, &quot;MxD11A2&quot;, img_col_file)
 ## A GDAL image collection object, referencing 140 images with 8  bands
 ## Images:
 ##                                                                name
-## 1 /tmp/RtmpNCepL7/MOD11A2/MOD11A2.A2018001.h17v03.006.2018011145329
-## 2 /tmp/RtmpNCepL7/MOD11A2/MOD11A2.A2018001.h17v04.006.2018011145438
-## 3 /tmp/RtmpNCepL7/MOD11A2/MOD11A2.A2018001.h18v03.006.2018011145428
-## 4 /tmp/RtmpNCepL7/MOD11A2/MOD11A2.A2018001.h18v04.006.2018011145326
-## 5 /tmp/RtmpNCepL7/MOD11A2/MOD11A2.A2018009.h17v03.006.2018018034330
-## 6 /tmp/RtmpNCepL7/MOD11A2/MOD11A2.A2018009.h17v04.006.2018018034246
+## 1 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018001.h17v03.006.2018011145329
+## 2 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018001.h17v04.006.2018011145438
+## 3 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018001.h18v03.006.2018011145428
+## 4 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018001.h18v04.006.2018011145326
+## 5 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018009.h17v03.006.2018018034330
+## 6 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018009.h17v04.006.2018018034246
 ##        left top bottom    right            datetime
 ## 1 -20.00000  60     50  0.00000 2018-01-01T00:00:00
 ## 2 -15.55724  50     40  0.00000 2018-01-01T00:00:00
@@ -517,13 +517,13 @@ create_image_collection(files, &quot;MxD11A2&quot;, img_col_file)
 ## 4   0.00000  50     40 15.55724 2018-01-01T00:00:00
 ## 5 -20.00000  60     50  0.00000 2018-01-09T00:00:00
 ## 6 -15.55724  50     40  0.00000 2018-01-09T00:00:00
-##                                                                                  srs
-## 1 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs 
-## 2 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs 
-## 3 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs 
-## 4 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs 
-## 5 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs 
-## 6 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs 
+##                                                                  srs
+## 1 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs
+## 2 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs
+## 3 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs
+## 4 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs
+## 5 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs
+## 6 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs
 ## [ omitted 134 images ] 
 ## 
 ## Bands:
@@ -628,7 +628,7 @@ dimensions(x)
 ## $x$chunk_size
 ## [1] 256
 srs(x)
-## [1] &quot;+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs &quot;</code></pre>
+## [1] &quot;+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs&quot;</code></pre>
 <p>Notice that <code>raster_cube()</code> will not run any computations besides deriving the shape of the output cube. Instead, it will return a <em>proxy</em> object that will not be evaluated until data must be actually read (e.g. when calling <code>plot</code>). This not only applies to data cubes from image collections but also for derived cubes (see further below). In most cases, however, users want to specify the extent and resolution manually. Above, the temporal resolution of the cube was 3 months whereas below, we define a custom data cube view with temporal resolution of one month.</p>
 <pre class="r"><code>srs=&quot;+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs&quot;
 MOD11A2.col = image_collection(img_col_file)
@@ -640,7 +640,7 @@ v
 ##                 low             high count       pixel_size
 ## t           2018-01          2018-09     9              P1M
 ## y  4447802.07906609 6671703.11859914   261 8520.69363805765
-## x -1703607.03338081 1703607.03338081   400 8518.03516690405
+## x -1703607.03338081 1703607.03338081   400 8518.03516690404
 ## 
 ## SRS: &quot;+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs&quot;
 ## Temporal aggregation method: &quot;mean&quot;
@@ -653,7 +653,7 @@ MOD11A2.cube
 ##                 low             high count       pixel_size chunk_size
 ## t           2018-01          2018-09     9              P1M         16
 ## y  4447802.07906609 6671703.11859914   261 8520.69363805765        256
-## x -1703607.03338081 1703607.03338081   400 8518.03516690405        256
+## x -1703607.03338081 1703607.03338081   400 8518.03516690404        256
 ## 
 ## Bands:
 ##              name offset scale nodata unit

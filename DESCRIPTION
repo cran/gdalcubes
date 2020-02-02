@@ -1,7 +1,7 @@
 Package: gdalcubes
 Title: Earth Observation Data Cubes from Satellite Image Collections
-Version: 0.2.3
-Date: 2019-10-21
+Version: 0.2.4
+Date: 2020-02-02
 Authors@R: c(
     person(given = "Marius",
            family = "Appel",
@@ -60,7 +60,7 @@ VignetteBuilder: knitr
 Copyright: file inst/COPYRIGHTS
 NeedsCompilation: yes
 SystemRequirements: cxx11, gdal, libgdal, libproj, libcurl, netcdf4
-Packaged: 2019-10-21 07:34:20 UTC; marius
+Packaged: 2020-02-01 21:41:45 UTC; marius
 Author: Marius Appel [aut, cre] (<https://orcid.org/0000-0001-5281-3896>),
   Edzer Pebesma [ctb] (<https://orcid.org/0000-0001-8049-7069>),
   Roger Bivand [ctb],
@@ -74,4 +74,4 @@ Author: Marius Appel [aut, cre] (<https://orcid.org/0000-0001-5281-3896>),
   Tomasz Kamiński [cph]
 Maintainer: Marius Appel <marius.appel@uni-muenster.de>
 Repository: CRAN
-Date/Publication: 2019-10-21 13:30:03 UTC
+Date/Publication: 2020-02-02 15:00:07 UTC
