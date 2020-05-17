@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 
 <head>
 
 <meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 <meta name="author" content="Marius Appel" />
@@ -275,7 +275,6 @@ code {
 }
 img {
   max-width:100%;
-  height: auto;
 }
 .tabbed-pane {
   padding-top: 12px;
@@ -337,6 +336,7 @@ summary {
   border: none;
   display: inline-block;
   border-radius: 4px;
+  background-color: transparent;
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li {
@@ -348,18 +348,6 @@ summary {
   display: none;
 }
 </style>
-
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
 
 <!-- code folding -->
 
@@ -425,77 +413,69 @@ unlink(file.path(dest_dir, &quot;MOD11A2.zip&quot;))</code></pre>
 <pre class="r"><code>library(gdalcubes)
 ## Using gdalcubes library version 0.2.4
 collection_formats()
-##    CHIRPS_v2_0_daily_p05_tif | Image collection format for CHIRPS v 2.0
-##                              | daily global precipitation dataset (0.05
-##                              | degrees resolution) from GeoTIFFs, expects
-##                              | list of .tif or .tif.gz files as input.
-##                              | [TAGS: CHIRPS, precipitation]
-##  CHIRPS_v2_0_monthly_p05_tif | Image collection format for CHIRPS v 2.0
-##                              | monthly global precipitation dataset (0.05
-##                              | degrees resolution) from GeoTIFFs, expects
-##                              | list of .tif or .tif.gz files as input.
-##                              | [TAGS: CHIRPS, precipitation]
+##    CHIRPS_v2_0_daily_p05_tif | Image collection format for CHIRPS v 2.0 daily
+##                              | global precipitation dataset (0.05 degrees
+##                              | resolution) from GeoTIFFs, expects list of .tif
+##                              | or .tif.gz files as input. [TAGS: CHIRPS,
+##                              | precipitation]
+##  CHIRPS_v2_0_monthly_p05_tif | Image collection format for CHIRPS v 2.0 monthly
+##                              | global precipitation dataset (0.05 degrees
+##                              | resolution) from GeoTIFFs, expects list of .tif
+##                              | or .tif.gz files as input. [TAGS: CHIRPS,
+##                              | precipitation]
 ##                      L8_L1TP | Collection format for Landsat 8 Level 1 TP
-##                              | product [TAGS: Landsat, USGS, Level 1,
-##                              | NASA]
+##                              | product [TAGS: Landsat, USGS, Level 1, NASA]
 ##                        L8_SR | Collection format for Landsat 8 surface
-##                              | reflectance product [TAGS: Landsat, USGS,
-##                              | Level 2, NASA, surface reflectance]
-##                      MxD10A2 | Collection format for selected bands from
-##                              | the MODIS MxD10A2 (Aqua and Terra) v006
-##                              | Snow Cover product [TAGS: MODIS, Snow
-##                              | Cover]
-##                      MxD11A1 | Collection format for selected bands from
-##                              | the MODIS MxD11A2 (Aqua and Terra) v006
-##                              | Land Surface Temperature product [TAGS:
-##                              | MODIS, LST]
-##                      MxD11A2 | Collection format for selected bands from
-##                              | the MODIS MxD11A2 (Aqua and Terra) v006
-##                              | Land Surface Temperature product [TAGS:
-##                              | MODIS, LST]
-##                      MxD13A2 | Collection format for selected bands from
-##                              | the MODIS MxD13A2 (Aqua and Terra) product
-##                              | [TAGS: MODIS, VI, NDVI, EVI]
-##                      MxD13A3 | Collection format for selected bands from
-##                              | the MODIS MxD13A3 (Aqua and Terra) product
-##                              | [TAGS: MODIS, VI, NDVI, EVI]
-##                      MxD13Q1 | Collection format for selected bands from
-##                              | the MODIS MxD13Q1 (Aqua and Terra) product
-##                              | [TAGS: MODIS, VI, NDVI, EVI]
-##                      MxD14A2 | Collection format for the MODIS MxD14A2
-##                              | (Aqua and Terra) product [TAGS: MODIS,
-##                              | Fire]
-## PlanetScope_3B_AnalyticMS_SR | Image collection format for PlanetScope
-##                              | 4-band scenes [TAGS: PlanetScope, BOA,
-##                              | Surface Reflectance]
-##             Sentinel1_IW_GRD | Image collection format for Sentinel 1
-##                              | Level 1 GRD data as downloaded from the
-##                              | Copernicus Open Access Hub, expects a list
-##                              | of file paths as input. The format works on
-##                              | original ZIP compressed as well as
-##                              | uncompressed imagery. [TAGS: Sentinel,
-##                              | Copernicus, ESA, SAR]
-##                Sentinel2_L1C | Image collection format for Sentinel 2
-##                              | Level 1C data as downloaded from the
-##                              | Copernicus Open Access Hub, expects a list
-##                              | of file paths as input. The format works on
-##                              | original ZIP compressed as well as
-##                              | uncompressed imagery. [TAGS: Sentinel,
-##                              | Copernicus, ESA, TOA]
-##            Sentinel2_L1C_AWS | Image collection format for Sentinel 2
-##                              | Level 1C data in AWS [TAGS: Sentinel,
-##                              | Copernicus, ESA, TOA]
-##                Sentinel2_L2A | Image collection format for Sentinel 2
-##                              | Level 2A data as downloaded from the
-##                              | Copernicus Open Access Hub, expects a list
-##                              | of file paths as input. The format should
-##                              | work on original ZIP compressed as well as
-##                              | uncompressed imagery. [TAGS: Sentinel,
-##                              | Copernicus, ESA, BOA, Surface Reflectance]
-##          Sentinel2_L2A_THEIA | Image collection format for Sentinel 2
-##                              | Level 2A data as downloaded from Theia.
-##                              | [TAGS: Sentinel, ESA, Flat Reflectance,
-##                              | Theia]</code></pre>
+##                              | reflectance product [TAGS: Landsat, USGS, Level
+##                              | 2, NASA, surface reflectance]
+##                      MxD10A2 | Collection format for selected bands from the
+##                              | MODIS MxD10A2 (Aqua and Terra) v006 Snow Cover
+##                              | product [TAGS: MODIS, Snow Cover]
+##                      MxD11A1 | Collection format for selected bands from the
+##                              | MODIS MxD11A2 (Aqua and Terra) v006 Land Surface
+##                              | Temperature product [TAGS: MODIS, LST]
+##                      MxD11A2 | Collection format for selected bands from the
+##                              | MODIS MxD11A2 (Aqua and Terra) v006 Land Surface
+##                              | Temperature product [TAGS: MODIS, LST]
+##                      MxD13A2 | Collection format for selected bands from the
+##                              | MODIS MxD13A2 (Aqua and Terra) product [TAGS:
+##                              | MODIS, VI, NDVI, EVI]
+##                      MxD13A3 | Collection format for selected bands from the
+##                              | MODIS MxD13A3 (Aqua and Terra) product [TAGS:
+##                              | MODIS, VI, NDVI, EVI]
+##                      MxD13Q1 | Collection format for selected bands from the
+##                              | MODIS MxD13Q1 (Aqua and Terra) product [TAGS:
+##                              | MODIS, VI, NDVI, EVI]
+##                      MxD14A2 | Collection format for the MODIS MxD14A2 (Aqua
+##                              | and Terra) product [TAGS: MODIS, Fire]
+## PlanetScope_3B_AnalyticMS_SR | Image collection format for PlanetScope 4-band
+##                              | scenes [TAGS: PlanetScope, BOA, Surface
+##                              | Reflectance]
+##             Sentinel1_IW_GRD | Image collection format for Sentinel 1 Level 1
+##                              | GRD data as downloaded from the Copernicus Open
+##                              | Access Hub, expects a list of file paths as
+##                              | input. The format works on original ZIP
+##                              | compressed as well as uncompressed imagery.
+##                              | [TAGS: Sentinel, Copernicus, ESA, SAR]
+##                Sentinel2_L1C | Image collection format for Sentinel 2 Level 1C
+##                              | data as downloaded from the Copernicus Open
+##                              | Access Hub, expects a list of file paths as
+##                              | input. The format works on original ZIP
+##                              | compressed as well as uncompressed imagery.
+##                              | [TAGS: Sentinel, Copernicus, ESA, TOA]
+##            Sentinel2_L1C_AWS | Image collection format for Sentinel 2 Level 1C
+##                              | data in AWS [TAGS: Sentinel, Copernicus, ESA,
+##                              | TOA]
+##                Sentinel2_L2A | Image collection format for Sentinel 2 Level 2A
+##                              | data as downloaded from the Copernicus Open
+##                              | Access Hub, expects a list of file paths as
+##                              | input. The format should work on original ZIP
+##                              | compressed as well as uncompressed imagery.
+##                              | [TAGS: Sentinel, Copernicus, ESA, BOA, Surface
+##                              | Reflectance]
+##          Sentinel2_L2A_THEIA | Image collection format for Sentinel 2 Level 2A
+##                              | data as downloaded from Theia. [TAGS: Sentinel,
+##                              | ESA, Flat Reflectance, Theia]</code></pre>
 <p>In this case, <code>MxD11A2</code> is the correct format for our datasets. Internally, collection formats are defined in relatively simple JSON files, presets for other products will be added continuously.</p>
 <p>To create the image collection, we must pass a list of our files and the collection format to the <code>create_image_collection()</code> function. The code below finds all files as character vector of GDAL datasets, which then can be passed as first argument to <code>create_image_collection()</code>. The second argument here referes to the image collection format and the third argument provides the name of the output image collection file (which is simply an SQLite database). The collection format also knows that bands are stored as subdatasets in the HDF files.</p>
 <pre class="r"><code>img_col_file = tempfile(fileext=&quot;.db&quot;)
@@ -503,20 +483,20 @@ files = list.files(file.path(dest_dir,&quot;MOD11A2&quot;), pattern=&quot;.hdf$&
 create_image_collection(files, &quot;MxD11A2&quot;, img_col_file)
 ## A GDAL image collection object, referencing 140 images with 8  bands
 ## Images:
-##                                                                name
-## 1 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018001.h17v03.006.2018011145329
-## 2 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018001.h17v04.006.2018011145438
-## 3 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018001.h18v03.006.2018011145428
-## 4 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018001.h18v04.006.2018011145326
-## 5 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018009.h17v03.006.2018018034330
-## 6 /tmp/RtmpirylMc/MOD11A2/MOD11A2.A2018009.h17v04.006.2018018034246
-##        left top bottom    right            datetime
-## 1 -20.00000  60     50  0.00000 2018-01-01T00:00:00
-## 2 -15.55724  50     40  0.00000 2018-01-01T00:00:00
-## 3   0.00000  60     50 20.00000 2018-01-01T00:00:00
-## 4   0.00000  50     40 15.55724 2018-01-01T00:00:00
-## 5 -20.00000  60     50  0.00000 2018-01-09T00:00:00
-## 6 -15.55724  50     40  0.00000 2018-01-09T00:00:00
+##                                                                name      left
+## 1 /tmp/Rtmp4VSEKX/MOD11A2/MOD11A2.A2018001.h17v03.006.2018011145329 -20.00000
+## 2 /tmp/Rtmp4VSEKX/MOD11A2/MOD11A2.A2018001.h17v04.006.2018011145438 -15.55724
+## 3 /tmp/Rtmp4VSEKX/MOD11A2/MOD11A2.A2018001.h18v03.006.2018011145428   0.00000
+## 4 /tmp/Rtmp4VSEKX/MOD11A2/MOD11A2.A2018001.h18v04.006.2018011145326   0.00000
+## 5 /tmp/Rtmp4VSEKX/MOD11A2/MOD11A2.A2018009.h17v03.006.2018018034330 -20.00000
+## 6 /tmp/Rtmp4VSEKX/MOD11A2/MOD11A2.A2018009.h17v04.006.2018018034246 -15.55724
+##   top bottom    right            datetime
+## 1  60     50  0.00000 2018-01-01T00:00:00
+## 2  50     40  0.00000 2018-01-01T00:00:00
+## 3  60     50 20.00000 2018-01-01T00:00:00
+## 4  50     40 15.55724 2018-01-01T00:00:00
+## 5  60     50  0.00000 2018-01-09T00:00:00
+## 6  50     40  0.00000 2018-01-09T00:00:00
 ##                                                                  srs
 ## 1 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs
 ## 2 +proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs
@@ -715,6 +695,23 @@ $(document).ready(function () {
 
 
 </script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
 <script>
