@@ -1,18 +1,56 @@
+# gdalcubes 0.3.0 (2020-08-05)
+
+## New Features
+
+* Compute summary statistics of data cubes over polygons with `zonal_statistics()` 
+* Extracts time series at irregular spatial points with `query_timeseries()` 
+* Time dimension may ow be irregular / labeled after selecting slices with the new `select_time()` function
+* Filter pixels of a data cube by a spatial polygon with `filter_geom()`
+* Apply an R function on time series without reduction using `apply_time()`
+* Batch format conversion of images in a collection with `translate_cog()` and `translate_gtiff()`
+
+## Minor improvements
+
+* conversion to stars objects with `st_as_stars()`
+* add support for image collections without collection format in `create_image_collection()`
+* optional global SRS definition in collection formats
+* default chunk size is now (t,y,x) = (1,256,256)
+* remove `reduce()` function
+* remove `cube` argument in `cube_view` function
+* new collection format for daily 0.25° AVHRR Optimum Interpolation Sea Surface Temperature
+* new collection formats for ESA CCI soil moisture products
+* new collection format for daily precipitation observations from GPM / IMERG
+* new collection format for MODIS MOD09GA (aqua and terra)
+* add `na.color` argument in `plot.cube()`
+
+## Bug fixes
+
+* fix CRS metadata in produced netCDF files  
+* fix multithreading locking issues with GDAL 3
+
+
+
+
 # gdalcubes 0.2.5 (2020-05-17)
 
 * fixed compiler warnings on CRAN
 * temporarily removed `as_stars()`, will be added again in 0.3
+
+
 
 # gdalcubes 0.2.4 (2020-02-02)
 
 * fixed axis order issues with GDAL3 and PROJ6
 * fixed compiler warnings with GDAL3
 
+
+
 # gdalcubes 0.2.3 (2019-10-21)
 
 * fixed clang compiler warnings 
 * fixed MODIS collection formats
 * new collection formats MxD14A2 and MxD13A2
+
 
 # gdalcubes 0.2.2 (2019-10-15)
 
