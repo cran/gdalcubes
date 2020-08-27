@@ -26,6 +26,7 @@
 
 #include <curl/curl.h>
 #include <gdal_priv.h>
+#include <ogr_geometry.h>
 
 #include "cube.h"
 
@@ -164,6 +165,10 @@ std::vector<std::string> config::gdal_formats() {
         out.push_back(GDALGetDriverShortName(GDALGetDriver(i)));
     }
     return out;
+}
+
+bool config::gdal_has_geos() {
+    return OGRGeometryFactory::haveGEOS();
 }
 
 }  // namespace gdalcubes
