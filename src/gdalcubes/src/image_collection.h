@@ -100,6 +100,7 @@ class image_collection {
 
     static std::shared_ptr<image_collection> create(collection_format format, std::vector<std::string> descriptors, bool strict = true);
     static std::shared_ptr<image_collection> create(std::vector<std::string> descriptors, std::vector<std::string> date_time, std::vector<std::string> band_names = {}, bool use_subdatasets = false);
+    static std::shared_ptr<image_collection> create();
 
     std::string to_string();
 
@@ -123,9 +124,8 @@ class image_collection {
     bool is_valid();
 
     /**
-    * Check if the database has no images
-    * @return true, if the database is OK, false otherwise
-    * @note NOT YET IMPLEMENTED
+    * Check if the database has no images and/or bands
+    * @return true, if the database is empty, i.e. does not point to any bands or datasets
     */
     bool is_empty();
 
@@ -218,11 +218,41 @@ class image_collection {
     std::vector<image_collection::images_row> get_images();
 
     /**
-     * Helper function to create image collections programatically,
-     * e.g. for processing results.
-     * @note NOT YET IMPLEMENTED
+     * Helper function to create image collections from full tables
+     *
+     * @note Rows with identical image names are expected to have identical datetime, left, right, bottom, top, and proj values
+     * @note Currently, it is not possible to specify additional band metadata (offset, scale, unit, etc.)
+     * @note All vector arguments represent columns of a table and must have identical sizes.
      */
-    static void create_empty(std::vector<bands_row>);
+    static std::shared_ptr<image_collection> create_from_tables(std::vector<std::string> band_name,
+                                                                std::vector<std::string>image_name,
+                                                                std::vector<std::string>image_proj,
+                                                                std::vector<std::string>image_datetime,
+                                                                std::vector<double> image_left,
+                                                                std::vector<double> image_top,
+                                                                std::vector<double> image_bottom,
+                                                                std::vector<double> image_right,
+                                                                std::vector<std::string> gdalrefs_descriptor,
+                                                                std::vector<uint16_t> gdalrefs_band_num);
+
+    // Lowe level functions to create image collections programmatically
+
+    uint32_t insert_band(uint32_t id, std::string name, std::string type="", double offset = 0.0, double scale = 1.0, std::string unit = "", std::string nodata = "");
+    uint32_t insert_band(std::string name, std::string type="", double offset = 0.0, double scale = 1.0, std::string unit = "", std::string nodata = "");
+
+    uint32_t insert_image(uint32_t id, std::string name, double left, double top, double bottom, double right, std::string datetime, std::string proj);
+    uint32_t insert_image(std::string name, double left, double top, double bottom, double right, std::string datetime, std::string proj);
+
+    void insert_dataset(uint32_t image_id, uint32_t band_id, std::string descriptor, uint32_t band_num = 1);
+
+    void insert_collection_md(std::string key, std::string value);
+    void insert_band_md(uint32_t band_id, std::string key, std::string value);
+    void insert_image_md(uint32_t image_id, std::string key, std::string value);
+
+    void transaction_start();
+    void transaction_end();
+
+
 
     /**
      * Derive the size of a pixel for one or all bands in bytes

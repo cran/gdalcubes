@@ -87,7 +87,7 @@ void chunk_processor_multithread_interruptible::apply(std::shared_ptr<cube> c,
       if (Progress::check_abort()) {
         interrupted = true; // still need to wait for threads to finish current chunk
       }
-      uint32_t cur_ms = std::min(750, 100 + i*50);
+      uint32_t cur_ms = std::min(500, 50 + i*50);
       std::this_thread::sleep_for(std::chrono::milliseconds(cur_ms));
     }
     ++i;
@@ -98,14 +98,7 @@ void chunk_processor_multithread_interruptible::apply(std::shared_ptr<cube> c,
   if (interrupted) {
     throw std::string("computations have been interrupted by the user");
   }
-
 }
-
-
-
-
-
-
 
 
 
@@ -193,18 +186,13 @@ struct progress_simple_R : public progress {
     _m.unlock();
   }
 
-
   progress_simple_R() : _p(0), _rp(nullptr) {}
-
+  
   ~progress_simple_R(){
     if (_rp) {
       delete _rp;
     }
   }
-  
- 
-  
-  
 
 private:
   
@@ -213,6 +201,7 @@ private:
   Progress *_rp;
   
   void _set(double p) { // call this function only with a lock on _m
+    
     //Rcpp::checkUserInterrupt();
     // if (Progress::check_abort()) {
     //   throw std::string("Operation has been interrupted by user");
@@ -221,10 +210,45 @@ private:
       error_handling_r::defer_output();
       _rp = new Progress(100,true);
     }
+    
     _p = p;
     _rp->update((int)(_p*100));
   }
 };
+
+
+struct progress_none_R : public progress {
+  std::shared_ptr<progress> get() override { return std::make_shared<progress_none_R>(); }
+  
+  void set(double p) override {}
+  
+  void increment(double dp) override {}
+  virtual void finalize() override {
+    _rp->update(100);
+  }
+  progress_none_R() :  _rp(nullptr) {
+    // instance is needed for Progress::check_abort()
+    _rp = new Progress(100,false);
+  }
+  ~progress_none_R(){
+    if (_rp) {
+      delete _rp;
+    }
+  }
+  
+private:
+  Progress *_rp;
+};
+// 
+// struct progress_none_R : public progress {
+//   std::shared_ptr<progress> get() override { return std::make_shared<progress_none_R>(); }
+//   void set(double p) override {};
+//   void increment(double dp) override {}
+//   virtual void finalize() override {}
+//   progress_none_R() {}
+// };
+
+
 
 // see https://stackoverflow.com/questions/26666614/how-do-i-check-if-an-externalptr-is-null-from-within-r
 // [[Rcpp::export]]
@@ -641,6 +665,10 @@ Rcpp::List libgdalcubes_image_collection_info( SEXP pin) {
     Rcpp::XPtr<std::shared_ptr<image_collection>> aa = Rcpp::as<Rcpp::XPtr<std::shared_ptr<image_collection>>>(pin);
     std::shared_ptr<image_collection> ic = *aa;
     
+    if ((*aa)->is_empty()) {
+      return Rcpp::List::create();
+    }
+    
     std::vector<image_collection::images_row> img = ic->get_images();
     
     Rcpp::CharacterVector images_name(img.size());
@@ -1037,6 +1065,21 @@ SEXP libgdalcubes_create_image_collection_cube(SEXP pin, Rcpp::IntegerVector chu
 }
 
 
+// [[Rcpp::export]]
+SEXP libgdalcubes_create_ncdf_cube(std::string path, Rcpp::IntegerVector chunk_sizes, bool auto_unpack) {
+  
+  try {
+    std::shared_ptr<ncdf_cube>* x  = new std::shared_ptr<ncdf_cube>( ncdf_cube::create(path, auto_unpack));
+    if (chunk_sizes.size() == 3) {
+      (*x)->set_chunk_size(chunk_sizes[0], chunk_sizes[1], chunk_sizes[2]);
+    }
+    Rcpp::XPtr< std::shared_ptr<ncdf_cube> > p(x, true) ;
+    return p;
+  }
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
 
 
 
@@ -1126,7 +1169,26 @@ SEXP libgdalcubes_create_dummy_cube(SEXP v, uint16_t nbands, double fill, Rcpp::
 
 
 
+// [[Rcpp::export]]
+SEXP libgdalcubes_create_rename_bands_cube(SEXP pin, std::vector<std::string> names_old, std::vector<std::string> names_new) {
+  try {
+    Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr<std::shared_ptr<cube>>>(pin);
+    
+    std::map<std::string, std::string> bandnames;
+    for (uint16_t i=0; i<names_old.size(); ++i) {
+      bandnames[names_old[i]] = names_new[i];
+    }
 
+    std::shared_ptr<rename_bands_cube>* x = new std::shared_ptr<rename_bands_cube>(rename_bands_cube::create(*aa, bandnames));
+    Rcpp::XPtr< std::shared_ptr<rename_bands_cube> > p(x, true) ;
+    
+    return p;
+  }
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
+  
 
 
 // [[Rcpp::export]]
@@ -1306,6 +1368,9 @@ SEXP libgdalcubes_create_apply_pixel_cube(SEXP pin, std::vector<std::string> exp
     Rcpp::stop(s);
   }
 }
+
+
+
 
 // [[Rcpp::export]]
 SEXP libgdalcubes_create_stream_apply_pixel_cube(SEXP pin, std::string cmd, uint16_t nbands, std::vector<std::string> names, bool keep_bands = false) {
@@ -1579,6 +1644,16 @@ void libgdalcubes_set_threads(IntegerVector n) {
   config::instance()->set_default_chunk_processor(std::dynamic_pointer_cast<chunk_processor>(std::make_shared<chunk_processor_multithread_interruptible>(n[0])));
 }
 
+// [[Rcpp::export]]
+void libgdalcubes_set_progress(bool show_progress) {
+  if (show_progress) {
+    config::instance()->set_default_progress_bar(std::make_shared<progress_simple_R>());
+  }
+  else {
+    config::instance()->set_default_progress_bar(std::make_shared<progress_none_R>());
+  }
+}
+
 
 // [[Rcpp::export]]
 void libgdalcubes_set_use_overviews(bool use_overviews) {
@@ -1615,17 +1690,64 @@ std::string libgdalcubes_translate_gtiff(SEXP collection, std::string out_dir, u
 
 
 // [[Rcpp::export]]
-void libgdalcubes_set_swarm(std::vector<std::string> swarm) {
-  auto p = gdalcubes_swarm::from_urls(swarm);
-  //p->set_threads(nthreads);
-  config::instance()->set_default_chunk_processor(p);
-  // TODO: how to make swarm interruptible
-}
-
-// [[Rcpp::export]]
 std::string libgdalcubes_simple_hash(std::string instr) {
   return utils::hash(instr);
 }
 
+// [[Rcpp::export]]
+void libgdalcubes_create_stac_collection(Rcpp::DataFrame bands, Rcpp::DataFrame images, Rcpp::DataFrame gdalrefs, std::string outfile, Rcpp::DataFrame image_md) {
+  
+  try {
+    //std::shared_ptr<image_collection>* x = new std::shared_ptr<image_collection>();
+    std::shared_ptr<image_collection> x = image_collection::create();
+    
+    x->transaction_start();
+    
+    Rcpp::CharacterVector band_name =  bands["name"];
+    Rcpp::IntegerVector band_id = bands["id"];
+    for (int32_t i=0; i<bands.nrows(); ++i) {
+      x->insert_band(band_id[i], Rcpp::as<std::string>(band_name[i])); // TODO add further data if available
+    }
 
+    Rcpp::IntegerVector image_id = images["id"];
+    Rcpp::CharacterVector image_name = images["name"];
+    Rcpp::NumericVector image_left =images["left"];
+    Rcpp::NumericVector image_top =images["top"];
+    Rcpp::NumericVector image_bottom =images["bottom"];
+    Rcpp::NumericVector image_right =images["right"];
+    Rcpp::CharacterVector image_datetime = images["datetime"];
+    Rcpp::CharacterVector image_proj = images["proj"];
+    for (int32_t i=0; i<images.nrows(); ++i) {
+      x->insert_image(image_id[i], Rcpp::as<std::string>(image_name[i]), image_left[i], image_top[i],
+                         image_bottom[i], image_right[i], Rcpp::as<std::string>(image_datetime[i]), Rcpp::as<std::string>(image_proj[i]));
+    }
+
+    Rcpp::IntegerVector gdalrefs_image_id = gdalrefs["image_id"];
+    Rcpp::IntegerVector gdalrefs_band_id = gdalrefs["band_id"];
+    Rcpp::CharacterVector gdalrefs_descriptor = gdalrefs["descriptor"];
+    Rcpp::IntegerVector gdalrefs_band_num = gdalrefs["band_num"];
+    for (int32_t i=0; i<gdalrefs.nrows(); ++i) {
+      x->insert_dataset(gdalrefs_image_id[i],gdalrefs_band_id[i], Rcpp::as<std::string>(gdalrefs_descriptor[i]), gdalrefs_band_num[i]);
+    }
+    
+    
+    if (image_md.nrows() > 0) {
+      for (int32_t i=0; i<image_md.nrows(); ++i) {
+        Rcpp::IntegerVector image_md_image_id = image_md["image_id"];
+        Rcpp::CharacterVector image_md_key = image_md["key"];
+        Rcpp::CharacterVector image_md_value = image_md["value"];
+        
+        x->insert_image_md(image_md_image_id[i], Rcpp::as<std::string>(image_md_key[i]), Rcpp::as<std::string>(image_md_value[i]));
+      }
+    }
+    
+    // TODO: add collection, image, and band metadata
+    x->transaction_end();
+    
+    x->write(outfile);
+  }
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
 

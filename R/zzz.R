@@ -8,13 +8,20 @@
     libgdalcubes_add_format_dir(file.path(system.file(package="gdalcubes"),"formats")) # add collection formats directory 
   }
   
-  .pkgenv$compression_level = 0
+  .pkgenv$compression_level = 1
   .pkgenv$cube_cache = new.env()
   .pkgenv$use_cube_cache = TRUE
   .pkgenv$threads = 1
   .pkgenv$debug = FALSE
   .pkgenv$ncdf_write_bounds = TRUE 
   .pkgenv$use_overview_images = TRUE
+  if (interactive()) {
+    .pkgenv$show_progress = TRUE
+  }
+  else {
+    .pkgenv$show_progress = FALSE
+  }
+  libgdalcubes_set_progress(.pkgenv$show_progress)
 
   #.pkgenv$swarm = NULL
   register_s3_method("stars","st_as_stars", "cube")

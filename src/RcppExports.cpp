@@ -251,6 +251,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// libgdalcubes_create_ncdf_cube
+SEXP libgdalcubes_create_ncdf_cube(std::string path, Rcpp::IntegerVector chunk_sizes, bool auto_unpack);
+RcppExport SEXP _gdalcubes_libgdalcubes_create_ncdf_cube(SEXP pathSEXP, SEXP chunk_sizesSEXP, SEXP auto_unpackSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type chunk_sizes(chunk_sizesSEXP);
+    Rcpp::traits::input_parameter< bool >::type auto_unpack(auto_unpackSEXP);
+    rcpp_result_gen = Rcpp::wrap(libgdalcubes_create_ncdf_cube(path, chunk_sizes, auto_unpack));
+    return rcpp_result_gen;
+END_RCPP
+}
 // libgdalcubes_create_dummy_cube
 SEXP libgdalcubes_create_dummy_cube(SEXP v, uint16_t nbands, double fill, Rcpp::IntegerVector chunk_sizes);
 RcppExport SEXP _gdalcubes_libgdalcubes_create_dummy_cube(SEXP vSEXP, SEXP nbandsSEXP, SEXP fillSEXP, SEXP chunk_sizesSEXP) {
@@ -262,6 +275,19 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type fill(fillSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type chunk_sizes(chunk_sizesSEXP);
     rcpp_result_gen = Rcpp::wrap(libgdalcubes_create_dummy_cube(v, nbands, fill, chunk_sizes));
+    return rcpp_result_gen;
+END_RCPP
+}
+// libgdalcubes_create_rename_bands_cube
+SEXP libgdalcubes_create_rename_bands_cube(SEXP pin, std::vector<std::string> names_old, std::vector<std::string> names_new);
+RcppExport SEXP _gdalcubes_libgdalcubes_create_rename_bands_cube(SEXP pinSEXP, SEXP names_oldSEXP, SEXP names_newSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type pin(pinSEXP);
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type names_old(names_oldSEXP);
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type names_new(names_newSEXP);
+    rcpp_result_gen = Rcpp::wrap(libgdalcubes_create_rename_bands_cube(pin, names_old, names_new));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -585,6 +611,16 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// libgdalcubes_set_progress
+void libgdalcubes_set_progress(bool show_progress);
+RcppExport SEXP _gdalcubes_libgdalcubes_set_progress(SEXP show_progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    libgdalcubes_set_progress(show_progress);
+    return R_NilValue;
+END_RCPP
+}
 // libgdalcubes_set_use_overviews
 void libgdalcubes_set_use_overviews(bool use_overviews);
 RcppExport SEXP _gdalcubes_libgdalcubes_set_use_overviews(SEXP use_overviewsSEXP) {
@@ -625,16 +661,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// libgdalcubes_set_swarm
-void libgdalcubes_set_swarm(std::vector<std::string> swarm);
-RcppExport SEXP _gdalcubes_libgdalcubes_set_swarm(SEXP swarmSEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::vector<std::string> >::type swarm(swarmSEXP);
-    libgdalcubes_set_swarm(swarm);
-    return R_NilValue;
-END_RCPP
-}
 // libgdalcubes_simple_hash
 std::string libgdalcubes_simple_hash(std::string instr);
 RcppExport SEXP _gdalcubes_libgdalcubes_simple_hash(SEXP instrSEXP) {
@@ -644,6 +670,20 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type instr(instrSEXP);
     rcpp_result_gen = Rcpp::wrap(libgdalcubes_simple_hash(instr));
     return rcpp_result_gen;
+END_RCPP
+}
+// libgdalcubes_create_stac_collection
+void libgdalcubes_create_stac_collection(Rcpp::DataFrame bands, Rcpp::DataFrame images, Rcpp::DataFrame gdalrefs, std::string outfile, Rcpp::DataFrame image_md);
+RcppExport SEXP _gdalcubes_libgdalcubes_create_stac_collection(SEXP bandsSEXP, SEXP imagesSEXP, SEXP gdalrefsSEXP, SEXP outfileSEXP, SEXP image_mdSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type bands(bandsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type images(imagesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type gdalrefs(gdalrefsSEXP);
+    Rcpp::traits::input_parameter< std::string >::type outfile(outfileSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type image_md(image_mdSEXP);
+    libgdalcubes_create_stac_collection(bands, images, gdalrefs, outfile, image_md);
+    return R_NilValue;
 END_RCPP
 }
 
@@ -670,7 +710,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalcubes_libgdalcubes_list_collection_formats", (DL_FUNC) &_gdalcubes_libgdalcubes_list_collection_formats, 0},
     {"_gdalcubes_libgdalcubes_create_view", (DL_FUNC) &_gdalcubes_libgdalcubes_create_view, 1},
     {"_gdalcubes_libgdalcubes_create_image_collection_cube", (DL_FUNC) &_gdalcubes_libgdalcubes_create_image_collection_cube, 4},
+    {"_gdalcubes_libgdalcubes_create_ncdf_cube", (DL_FUNC) &_gdalcubes_libgdalcubes_create_ncdf_cube, 3},
     {"_gdalcubes_libgdalcubes_create_dummy_cube", (DL_FUNC) &_gdalcubes_libgdalcubes_create_dummy_cube, 4},
+    {"_gdalcubes_libgdalcubes_create_rename_bands_cube", (DL_FUNC) &_gdalcubes_libgdalcubes_create_rename_bands_cube, 3},
     {"_gdalcubes_libgdalcubes_create_reduce_time_cube", (DL_FUNC) &_gdalcubes_libgdalcubes_create_reduce_time_cube, 3},
     {"_gdalcubes_libgdalcubes_create_stream_reduce_time_cube", (DL_FUNC) &_gdalcubes_libgdalcubes_create_stream_reduce_time_cube, 4},
     {"_gdalcubes_libgdalcubes_create_stream_reduce_space_cube", (DL_FUNC) &_gdalcubes_libgdalcubes_create_stream_reduce_space_cube, 4},
@@ -695,11 +737,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalcubes_libgdalcubes_query_timeseries", (DL_FUNC) &_gdalcubes_libgdalcubes_query_timeseries, 4},
     {"_gdalcubes_libgdalcubes_zonal_statistics", (DL_FUNC) &_gdalcubes_libgdalcubes_zonal_statistics, 7},
     {"_gdalcubes_libgdalcubes_set_threads", (DL_FUNC) &_gdalcubes_libgdalcubes_set_threads, 1},
+    {"_gdalcubes_libgdalcubes_set_progress", (DL_FUNC) &_gdalcubes_libgdalcubes_set_progress, 1},
     {"_gdalcubes_libgdalcubes_set_use_overviews", (DL_FUNC) &_gdalcubes_libgdalcubes_set_use_overviews, 1},
     {"_gdalcubes_libgdalcubes_translate_cog", (DL_FUNC) &_gdalcubes_libgdalcubes_translate_cog, 5},
     {"_gdalcubes_libgdalcubes_translate_gtiff", (DL_FUNC) &_gdalcubes_libgdalcubes_translate_gtiff, 5},
-    {"_gdalcubes_libgdalcubes_set_swarm", (DL_FUNC) &_gdalcubes_libgdalcubes_set_swarm, 1},
     {"_gdalcubes_libgdalcubes_simple_hash", (DL_FUNC) &_gdalcubes_libgdalcubes_simple_hash, 1},
+    {"_gdalcubes_libgdalcubes_create_stac_collection", (DL_FUNC) &_gdalcubes_libgdalcubes_create_stac_collection, 5},
     {NULL, NULL, 0}
 };
 

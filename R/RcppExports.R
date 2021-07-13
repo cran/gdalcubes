@@ -89,8 +89,16 @@ libgdalcubes_create_image_collection_cube <- function(pin, chunk_sizes, mask, v 
     .Call('_gdalcubes_libgdalcubes_create_image_collection_cube', PACKAGE = 'gdalcubes', pin, chunk_sizes, mask, v)
 }
 
+libgdalcubes_create_ncdf_cube <- function(path, chunk_sizes, auto_unpack) {
+    .Call('_gdalcubes_libgdalcubes_create_ncdf_cube', PACKAGE = 'gdalcubes', path, chunk_sizes, auto_unpack)
+}
+
 libgdalcubes_create_dummy_cube <- function(v, nbands, fill, chunk_sizes) {
     .Call('_gdalcubes_libgdalcubes_create_dummy_cube', PACKAGE = 'gdalcubes', v, nbands, fill, chunk_sizes)
+}
+
+libgdalcubes_create_rename_bands_cube <- function(pin, names_old, names_new) {
+    .Call('_gdalcubes_libgdalcubes_create_rename_bands_cube', PACKAGE = 'gdalcubes', pin, names_old, names_new)
 }
 
 libgdalcubes_create_reduce_time_cube <- function(pin, reducers, bands) {
@@ -189,6 +197,10 @@ libgdalcubes_set_threads <- function(n) {
     invisible(.Call('_gdalcubes_libgdalcubes_set_threads', PACKAGE = 'gdalcubes', n))
 }
 
+libgdalcubes_set_progress <- function(show_progress) {
+    invisible(.Call('_gdalcubes_libgdalcubes_set_progress', PACKAGE = 'gdalcubes', show_progress))
+}
+
 libgdalcubes_set_use_overviews <- function(use_overviews) {
     invisible(.Call('_gdalcubes_libgdalcubes_set_use_overviews', PACKAGE = 'gdalcubes', use_overviews))
 }
@@ -201,11 +213,11 @@ libgdalcubes_translate_gtiff <- function(collection, out_dir, nthreads, overwrit
     .Call('_gdalcubes_libgdalcubes_translate_gtiff', PACKAGE = 'gdalcubes', collection, out_dir, nthreads, overwrite, creation_options)
 }
 
-libgdalcubes_set_swarm <- function(swarm) {
-    invisible(.Call('_gdalcubes_libgdalcubes_set_swarm', PACKAGE = 'gdalcubes', swarm))
-}
-
 libgdalcubes_simple_hash <- function(instr) {
     .Call('_gdalcubes_libgdalcubes_simple_hash', PACKAGE = 'gdalcubes', instr)
+}
+
+libgdalcubes_create_stac_collection <- function(bands, images, gdalrefs, outfile, image_md) {
+    invisible(.Call('_gdalcubes_libgdalcubes_create_stac_collection', PACKAGE = 'gdalcubes', bands, images, gdalrefs, outfile, image_md))
 }
 

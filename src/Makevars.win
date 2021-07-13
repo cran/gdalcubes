@@ -1,7 +1,6 @@
 
-RWINLIB_GDAL = ../windows/gdal2-2.2.3
+RWINLIB_GDAL = ../windows/gdal3-3.2.1
 RWINLIB_NETCDF = ../windows/netcdf-4.4.1.1-dap
-RWINLIB_CURL = ../windows/libcurl-7.59.0
 RWINLIB_SQLITE = ../windows/sqlite-amalgamation-3260000
 
 OBJECTS =   gdalcubes/src/apply_pixel.o \
@@ -17,6 +16,7 @@ OBJECTS =   gdalcubes/src/apply_pixel.o \
 			gdalcubes/src/image_collection_cube.o \
 			gdalcubes/src/image_collection_ops.o \
 			gdalcubes/src/join_bands.o \
+			gdalcubes/src/ncdf_cube.o \
 			gdalcubes/src/select_time.o \
 			gdalcubes/src/reduce_time.o \
 			gdalcubes/src/reduce_space.o \
@@ -24,13 +24,13 @@ OBJECTS =   gdalcubes/src/apply_pixel.o \
 			gdalcubes/src/select_bands.o \
 			gdalcubes/src/filter_pixel.o \
 			gdalcubes/src/filter_geom.o \
-			gdalcubes/src/fill_time.o\
+			gdalcubes/src/fill_time.o \
+			gdalcubes/src/rename_bands.o \
 			gdalcubes/src/stream.o \
 			gdalcubes/src/stream_reduce_time.o \
 			gdalcubes/src/stream_reduce_space.o \
 			gdalcubes/src/stream_apply_pixel.o \
 			gdalcubes/src/stream_apply_time.o \
-			gdalcubes/src/swarm.o \
 			gdalcubes/src/view.o \
 			gdalcubes/src/dummy.o \
 			gdalcubes/src/warp.o \
@@ -42,21 +42,26 @@ OBJECTS =   gdalcubes/src/apply_pixel.o \
 			gdalcubes.o \
 			RcppExports.o
 
-PKG_CPPFLAGS = -I$(RWINLIB_GDAL)/include/gdal \
-               -I$(RWINLIB_NETCDF)/include \
-               -I$(RWINLIB_CURL)/include \
+PKG_CPPFLAGS = -I$(RWINLIB_GDAL)/include/gdal-3.2.1 \
+               -I$(RWINLIB_GDAL)/include/netcdf-4.7.3 \
                -I$(RWINLIB_SQLITE) \
-               -DCURL_STATICLIB -DR_PACKAGE
+               -DR_PACKAGE -DGDALCUBES_NO_SWARM
  
+TARGET = lib$(subst gcc,,$(COMPILED_BY))$(R_ARCH)
 
-PKG_LIBS = -L$(RWINLIB_NETCDF)/lib$(R_ARCH) -L$(RWINLIB_GDAL)/lib$(R_ARCH) -L$(RWINLIB_CURL)/lib$(R_ARCH) \
-  -lgdal -lsqlite3 -lspatialite -lproj -lgeos_c -lgeos  \
-	-ljson-c -lnetcdf -lmariadbclient -lpq -lintl -lwebp -lcurl -lssh2 -lssl -lcrypto \
-	-lkea -lhdf5_cpp -lhdf5_hl -lhdf5 -lexpat -lfreexl -lcfitsio \
-	-lmfhdf -ldf -lxdr \
-	-lopenjp2 -ljasper -lpng16 -ljpeg -ltiff -lgeotiff -lgif -lxml2 -llzma -lszip -lz \
-	-lodbc32 -lodbccp32 -liconv -lpsapi -lws2_32 -lcrypt32 -lwldap32 -lsecur32 -lgdi32 
+PKG_LIBS = \
+	-L$(RWINLIB_GDAL)/$(TARGET) \
+	-L$(RWINLIB_GDAL)/lib$(R_ARCH) \
+	-lgdal -lsqlite3 -lspatialite -lproj -lgeos_c -lgeos  \
+	-ljson-c -lnetcdf -lmariadbclient -lpq -lpgport -lpgcommon \
+	-lwebp -lcurl -lssh2 -lssl \
+	-lhdf5_hl -lhdf5 -lexpat -lfreexl -lcfitsio \
+	-lmfhdf -lhdf -lxdr -lpcre \
+	-lopenjp2 -ljasper -lpng -ljpeg -ltiff -lgeotiff -lgif -lxml2 -llzma -lz \
+	-lodbc32 -lodbccp32 -liconv -lpsapi -lwldap32 -lsecur32 -lgdi32 -lnormaliz \
+	-lcrypto -lcrypt32 -lws2_32 -lshlwapi
 	
+
 
 all: clean winlibs
 

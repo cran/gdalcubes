@@ -17,7 +17,7 @@
 #' @param nrow number of rows for arranging plots with  \code{layout()}, see Details
 #' @param na.color color used to plot NA pixels
 #' @param ... further arguments passed to \code{image.default}
-#' @note If caching is enabled for the package (see \code{\link{gdalcubes_use_cache}}), repeated calls of plot
+#' @note If caching is enabled for the package (see \code{\link{gdalcubes_options}}), repeated calls of plot
 #' for the same data cube will not reevaluate the cube. Instead, the temporary result file will be reused, if possible.
 #' @note Some parts of the function have been copied from the stars package (c) Edzer Pebesma
 #' @details 
@@ -82,9 +82,13 @@ plot.cube  <-
       dtvalues = libgdalcubes_datetime_values(x)
       #if(periods.in.title) dtvalues = paste(dtvalues, cube_view(x)$time$dt)
       
-      
-      
-      if (.pkgenv$use_cube_cache) {
+      if ("ncdf_cube" %in% class(x)) {
+        fn = jsonlite::parse_json(as_json(x))$file
+        if (is.null(fn)) {
+          stop("Invalid ncdf cube; missing file reference")
+        }
+      }
+      else if (.pkgenv$use_cube_cache) {
         j = as_json(x)
         if (!is.null(.pkgenv$cube_cache[[j]])
             && file.exists(.pkgenv$cube_cache[[j]])) {
@@ -92,13 +96,13 @@ plot.cube  <-
         }
         else {
           fn = tempfile(fileext = ".nc")
-          libgdalcubes_eval_cube(x, fn, .pkgenv$compression_level)
+          write_ncdf(x, fn)
           .pkgenv$cube_cache[[j]] = fn
         }
       }
       else {
         fn = tempfile(fileext = ".nc")
-        libgdalcubes_eval_cube(x, fn, .pkgenv$compression_level)
+        write_ncdf(x, fn)
       }
       
       
@@ -372,8 +376,13 @@ plot.cube  <-
         }
       }
   
-      
-      if (.pkgenv$use_cube_cache) {
+      if ("ncdf_cube" %in% class(x)) {
+        fn = jsonlite::parse_json(as_json(x))$file
+        if (is.null(fn)) {
+          stop("Invalid ncdf cube; missing file reference")
+        }
+      }
+      else if (.pkgenv$use_cube_cache) {
         j = as_json(x)
         if (!is.null(.pkgenv$cube_cache[[j]])
             && file.exists(.pkgenv$cube_cache[[j]])) {
@@ -381,13 +390,13 @@ plot.cube  <-
         }
         else {
           fn = tempfile(fileext = ".nc")
-          libgdalcubes_eval_cube(x, fn, .pkgenv$compression_level)
+          write_ncdf(x, fn)
           .pkgenv$cube_cache[[j]] = fn
         }
       }
       else {
         fn = tempfile(fileext = ".nc")
-        libgdalcubes_eval_cube(x, fn, .pkgenv$compression_level)
+        write_ncdf(x, fn)
       }
       
   

@@ -1,6 +1,6 @@
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT(gdalcubes, 0.3.1, marius.appel@uni-muenster.de)
+AC_INIT(gdalcubes, 0.4.0, marius.appel@uni-muenster.de)
 AC_LANG(C++)
 
 # find R home and set CC/CFLAGS
@@ -380,6 +380,11 @@ if test [ -n "$proj_lib_path" ] ; then
 else
   if test "${proj_config_ok}" = yes; then
     PROJ_LIB_PATH=`${PROJ_CONFIG} --libs`
+    if [ `uname` = "Darwin" ]; then
+      PROJ_LIB_PATH=`${PROJ_CONFIG} --libs --static`
+    else
+      PROJ_LIB_PATH=`${PROJ_CONFIG} --libs`
+    fi
     AC_SUBST([PROJ_LIBS], ["${PROJ_LIB_PATH} ${INPKG_LIBS}"])
 	proj_version=`${PROJ_CONFIG} --modversion`
 	AC_MSG_NOTICE([PROJ: ${proj_version}])
@@ -737,7 +742,7 @@ AC_LANG_POP([C])
 # Bringing everything together #################################################################################
 
 
-AC_SUBST([PKG_CPPFLAGS], ["${INPKG_CPPFLAGS} ${PROJ_CPPFLAGS} ${GDAL_CPPFLAGS} ${NETCDF_CPPFLAGS} -DR_PACKAGE"])
+AC_SUBST([PKG_CPPFLAGS], ["${INPKG_CPPFLAGS} ${PROJ_CPPFLAGS} ${GDAL_CPPFLAGS} ${NETCDF_CPPFLAGS} -DR_PACKAGE -DGDALCUBES_NO_SWARM"])
 
 AC_SUBST([PKG_LIBS], ["${INPKG_LIBS} ${GDAL_LIBS} ${PROJ_LIBS}  ${NETCDF_LDFLAGS}"])
 if test "${NEED_DEPS}" = yes; then
