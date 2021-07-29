@@ -1,7 +1,7 @@
-f352999a68df836372a05f23a2677f28 *DESCRIPTION
+e7c87532ab8471bf704d56c7bc0baad8 *DESCRIPTION
 f66de614ac9f0015c222d771397fdaab *LICENSE
 ddb5e452fc4b1ca443783618d2e37163 *NAMESPACE
-e6fec8216e631aa1e542e20d8495929a *NEWS.md
+3e171b68b2ccc853f150f0f55c33d665 *NEWS.md
 4b7430aac739cf08bf3d683ee03d8902 *R/RcppExports.R
 903e5d6e42af69545ad09f36ea2b4257 *R/animate.R
 6b89ee56b04286423d034481cbfd61f5 *R/apply_pixel.R
@@ -33,8 +33,8 @@ c5f54c7bbaf8caa1b7ca0f6e9be19c5a *R/window.R
 889b1c910d3d778804ae9230c7e72850 *R/zzz.R
 e8701ed67a9fe92ebe14dbb669efc2ec *build/vignette.rds
 2519b20a4a9833b073573233c0bd64cf *cleanup
-543785db62fc118e9b2d8e842268a693 *configure
-9cbec1672fe4b695180e0d54b1bc0485 *configure.ac
+cfbf86bf2e22ab55d5fb9e0ad467fa33 *configure
+4a2919ae6dccd2c35d0c1128c86f4d30 *configure.ac
 4357352abc4180f5060ee4887f4fbffb *inst/CITATION
 e1d08151ad14f486a1511e7f92dda70c *inst/COPYRIGHTS
 ea4c445b0fdb7a7beb3921755c6009b8 *inst/L8NY18/LC08_L1TP_013032_20180131_20180207_01_T1/LC08_L1TP_013032_20180131_B1.TIF
@@ -267,7 +267,7 @@ edaf6aa4bf33961c153d32662b9c1004 *inst/L8NY18/LC08_L1TP_014032_20181208_20181226
 fa06514f516ab9bf343fc1c8410c6036 *inst/L8NY18/LC08_L1TP_014032_20181208_20181226_01_T1/LC08_L1TP_014032_20181208_BQA.TIF
 68b13c1d71a4317a155afe57ebb47d8c *inst/doc/MODIS.R
 fa0a41f53f874178a4ffec28e0fabb65 *inst/doc/MODIS.Rmd
-f75491bbf047d171f4633fead4ebcbdc *inst/doc/MODIS.html
+0c29d98a24736e170f958bb0b9030746 *inst/doc/MODIS.html
 ab458df0521835a80bacd8031a0726cf *inst/formats/CHIRPS_v2_0_daily_p05_tif.json
 c6a67e4565ff5ab5f0b590206f2a00ea *inst/formats/CHIRPS_v2_0_monthly_p05_tif.json
 271c81758722dc705ebf967fea39ef9a *inst/formats/ESA_CCI_SM_ACTIVE.json
@@ -360,8 +360,9 @@ c0b0769b9ad591fd78b4b7d3d794bae2 *man/write_ncdf.Rd
 832822a118c776faf069ae0c3ac8fc85 *man/write_tif.Rd
 49001a065fe42061c775affe694e32b4 *man/zonal_statistics.Rd
 b08c2d0360b9625ef1eee93814842cab *src/Makevars.in
-d6fd176f831e287e129c237d0e8be5f7 *src/Makevars.win
-0f0c328158c2b29471b662ef93e676fb *src/RcppExports.cpp
+2cec33791efd347cbcb051402d7cf9c4 *src/Makevars.ucrt
+d939739618d1b5170a0cea7fe1a67070 *src/Makevars.win
+b889e55817c6e5b4fc0f083fb8048287 *src/RcppExports.cpp
 e4b64c534e691ce52b7567f440319539 *src/gdalcubes.cpp
 a1c69d7a81a8f56f282816d9c7710b5d *src/gdalcubes/src/apply_pixel.cpp
 73e07aab8554fa200809f0e5afea82ce *src/gdalcubes/src/apply_pixel.h
@@ -447,5 +448,5 @@ a9455b41760ecb1578ebc033e16403d1 *src/gdalcubes/src/warp.cpp
 642a1a1bd83b2bfd4e8da8ae7d10f8d3 *src/gdalcubes/src/warp.h
 0aa81aa81b147412f2240b74f1928325 *src/gdalcubes/src/window_time.cpp
 7a4a930e50da146181297f948a5c64aa *src/gdalcubes/src/window_time.h
-62cd5555e0fbfc5a92113c576b1c7700 *tools/winlibs.R
+fbd31986a54750c892f039ef9724a00f *tools/winlibs.R
 fa0a41f53f874178a4ffec28e0fabb65 *vignettes/MODIS.Rmd

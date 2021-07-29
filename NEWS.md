@@ -1,3 +1,8 @@
+# gdalcubes 0.4.1 (2021-07-29)
+
+* fix build issues on MacOS
+* fixes for Windows build including ucrt support
+
 
 # gdalcubes 0.4.0 (2021-07-08)
 

@@ -1,7 +1,7 @@
 Package: gdalcubes
 Title: Earth Observation Data Cubes from Satellite Image Collections
-Version: 0.4.0
-Date: 2021-07-08
+Version: 0.4.1
+Date: 2021-07-29
 Authors@R: c(
     person(given = "Marius",
            family = "Appel",
@@ -15,6 +15,10 @@ Authors@R: c(
     person(given = "Roger",
            family = "Bivand",
            role = "ctb"),
+    person(given = "Jeroen",
+           family = "Ooms",
+           role = "ctb",
+           comment = c(ORCID = "0000-0002-4035-0289")),        
     person(given = "Lewis",
            family = "Van Winkle",
            role = "cph"),
@@ -58,10 +62,11 @@ VignetteBuilder: knitr
 Copyright: file inst/COPYRIGHTS
 NeedsCompilation: yes
 SystemRequirements: cxx11, gdal, libgdal, libproj, netcdf4
-Packaged: 2021-07-08 11:47:39 UTC; marius
+Packaged: 2021-07-29 08:59:45 UTC; marius
 Author: Marius Appel [aut, cre] (<https://orcid.org/0000-0001-5281-3896>),
   Edzer Pebesma [ctb] (<https://orcid.org/0000-0001-8049-7069>),
   Roger Bivand [ctb],
+  Jeroen Ooms [ctb] (<https://orcid.org/0000-0002-4035-0289>),
   Lewis Van Winkle [cph],
   Ole Christian Eidheim [cph],
   Howard Hinnant [cph],
@@ -72,4 +77,4 @@ Author: Marius Appel [aut, cre] (<https://orcid.org/0000-0001-5281-3896>),
   Dropbox, Inc. [cph]
 Maintainer: Marius Appel <marius.appel@uni-muenster.de>
 Repository: CRAN
-Date/Publication: 2021-07-13 12:00:08 UTC
+Date/Publication: 2021-07-29 13:00:02 UTC
