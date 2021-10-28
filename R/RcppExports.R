@@ -97,6 +97,10 @@ libgdalcubes_create_dummy_cube <- function(v, nbands, fill, chunk_sizes) {
     .Call('_gdalcubes_libgdalcubes_create_dummy_cube', PACKAGE = 'gdalcubes', v, nbands, fill, chunk_sizes)
 }
 
+libgdalcubes_copy_cube <- function(pin) {
+    .Call('_gdalcubes_libgdalcubes_copy_cube', PACKAGE = 'gdalcubes', pin)
+}
+
 libgdalcubes_create_rename_bands_cube <- function(pin, names_old, names_new) {
     .Call('_gdalcubes_libgdalcubes_create_rename_bands_cube', PACKAGE = 'gdalcubes', pin, names_old, names_new)
 }
@@ -177,8 +181,28 @@ libgdalcubes_create_stream_cube <- function(pin, cmd) {
     .Call('_gdalcubes_libgdalcubes_create_stream_cube', PACKAGE = 'gdalcubes', pin, cmd)
 }
 
+libgdalcubes_create_simple_cube <- function(files, datetime_values, bands, band_names, dx, dy, chunk_sizes) {
+    .Call('_gdalcubes_libgdalcubes_create_simple_cube', PACKAGE = 'gdalcubes', files, datetime_values, bands, band_names, dx, dy, chunk_sizes)
+}
+
 libgdalcubes_create_fill_time_cube <- function(pin, method) {
     .Call('_gdalcubes_libgdalcubes_create_fill_time_cube', PACKAGE = 'gdalcubes', pin, method)
+}
+
+libgdalcubes_create_aggregate_time_cube <- function(pin, dt, method, fact = 0L) {
+    .Call('_gdalcubes_libgdalcubes_create_aggregate_time_cube', PACKAGE = 'gdalcubes', pin, dt, method, fact)
+}
+
+libgdalcubes_create_slice_time_cube <- function(pin, dt, it = 0L) {
+    .Call('_gdalcubes_libgdalcubes_create_slice_time_cube', PACKAGE = 'gdalcubes', pin, dt, it)
+}
+
+libgdalcubes_create_slice_space_cube <- function(pin, loc, i) {
+    .Call('_gdalcubes_libgdalcubes_create_slice_space_cube', PACKAGE = 'gdalcubes', pin, loc, i)
+}
+
+libgdalcubes_create_crop_cube <- function(pin, extent, iextent, snap) {
+    .Call('_gdalcubes_libgdalcubes_create_crop_cube', PACKAGE = 'gdalcubes', pin, extent, iextent, snap)
 }
 
 libgdalcubes_query_points <- function(pin, px, py, pt, srs) {

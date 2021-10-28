@@ -1,5 +1,6 @@
 
 #include "gdalcubes/src/gdalcubes.h"
+#include "gdalcubes/src/cube_factory.h"
 
 // [[Rcpp::plugins("cpp11")]]
 // [[Rcpp::depends(RcppProgress)]]
@@ -472,8 +473,8 @@ Rcpp::List libgdalcubes_dimension_values_from_view(Rcpp::List view, std::string 
   if (Rcpp::as<Rcpp::List>(view["time"])["dt"] != R_NilValue) {
     std::string tmp = Rcpp::as<Rcpp::String>(Rcpp::as<Rcpp::List>(view["time"])["dt"]);
     cv.dt(duration::from_string(tmp));
-    cv.t0().unit() = cv.dt().dt_unit; 
-    cv.t1().unit() = cv.dt().dt_unit; 
+    cv.t0().unit(cv.dt().dt_unit); 
+    cv.t1().unit(cv.dt().dt_unit); 
   }
   
   if (view["aggregation"] != R_NilValue) {
@@ -769,6 +770,8 @@ Rcpp::List libgdalcubes_image_collection_info( SEXP pin) {
 
 
 
+
+
 // [[Rcpp::export]]
 Rcpp::List libgdalcubes_image_collection_extent( SEXP pin, std::string srs) {
   
@@ -920,8 +923,8 @@ SEXP libgdalcubes_create_view(SEXP v) {
   if (Rcpp::as<Rcpp::List>(view["time"])["dt"] != R_NilValue) {
     std::string tmp = Rcpp::as<Rcpp::String>(Rcpp::as<Rcpp::List>(view["time"])["dt"]);
     cv.dt(duration::from_string(tmp));
-    cv.t0().unit() = cv.dt().dt_unit; 
-    cv.t1().unit() = cv.dt().dt_unit; 
+    cv.t0().unit(cv.dt().dt_unit); 
+    cv.t1().unit(cv.dt().dt_unit); 
   }
   
   if (view["aggregation"] != R_NilValue) {
@@ -1139,8 +1142,8 @@ SEXP libgdalcubes_create_dummy_cube(SEXP v, uint16_t nbands, double fill, Rcpp::
       if (Rcpp::as<Rcpp::List>(view["time"])["dt"] != R_NilValue) {
         std::string tmp = Rcpp::as<Rcpp::String>(Rcpp::as<Rcpp::List>(view["time"])["dt"]);
         cv.dt(duration::from_string(tmp));
-        cv.t0().unit() = cv.dt().dt_unit; 
-        cv.t1().unit() = cv.dt().dt_unit; 
+        cv.t0().unit(cv.dt().dt_unit); 
+        cv.t1().unit(cv.dt().dt_unit); 
       }
       
       if (view["aggregation"] != R_NilValue) {
@@ -1162,6 +1165,22 @@ SEXP libgdalcubes_create_dummy_cube(SEXP v, uint16_t nbands, double fill, Rcpp::
   }
 }
 
+
+
+
+
+// [[Rcpp::export]]
+SEXP libgdalcubes_copy_cube(SEXP pin) {
+  try {
+    Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr<std::shared_ptr<cube>>>(pin);
+    std::shared_ptr<cube>* x  = new std::shared_ptr<cube>(cube_factory::instance()->create_from_json((*aa)->make_constructible_json()));
+    Rcpp::XPtr< std::shared_ptr<cube> > p(x, true) ;
+    return p;
+  }
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
 
 
 
@@ -1571,6 +1590,27 @@ SEXP libgdalcubes_create_stream_cube(SEXP pin, std::string cmd) {
   }
 }
 
+
+
+// [[Rcpp::export]]
+SEXP libgdalcubes_create_simple_cube(std::vector<std::string> files,std::vector<std::string> datetime_values, 
+                                     std::vector<std::string> bands,  std::vector<std::string> band_names, 
+                                     double dx, double dy,  Rcpp::IntegerVector chunk_sizes) {
+  try {
+    std::shared_ptr<simple_cube>* x = new std::shared_ptr<simple_cube>( simple_cube::create(files, datetime_values,
+                                                                                            bands, band_names,
+                                                                                            dx, dy));
+    (*x)->set_chunk_size(chunk_sizes[0], chunk_sizes[1], chunk_sizes[2]);
+    Rcpp::XPtr< std::shared_ptr<simple_cube> > p(x, true) ;
+    return p;
+  }
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
+
+
+
 // [[Rcpp::export]]
 SEXP libgdalcubes_create_fill_time_cube(SEXP pin, std::string method) {
   try {
@@ -1584,6 +1624,97 @@ SEXP libgdalcubes_create_fill_time_cube(SEXP pin, std::string method) {
   }
 }
 
+
+// [[Rcpp::export]]
+SEXP libgdalcubes_create_aggregate_time_cube(SEXP pin, std::string dt, std::string method, uint32_t fact=0) {
+  try {
+    Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr< std::shared_ptr<cube> >>(pin);
+    
+    std::shared_ptr<aggregate_time_cube>* x;
+    if (fact >= 1) {
+      x = new std::shared_ptr<aggregate_time_cube>(aggregate_time_cube::create(*aa, fact, method));
+    }
+    else {
+      x = new std::shared_ptr<aggregate_time_cube>(aggregate_time_cube::create(*aa, dt, method));
+    }
+    Rcpp::XPtr< std::shared_ptr<aggregate_time_cube> > p(x, true) ;
+    return p;
+  } 
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
+
+
+// [[Rcpp::export]]
+SEXP libgdalcubes_create_slice_time_cube(SEXP pin, std::string dt, int32_t it=0) {
+  try {
+    Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr< std::shared_ptr<cube> >>(pin);
+    
+    std::shared_ptr<slice_time_cube>* x;
+    if (dt.empty()) {
+      x = new std::shared_ptr<slice_time_cube>(slice_time_cube::create(*aa, it));
+    }
+    else {
+      x = new std::shared_ptr<slice_time_cube>(slice_time_cube::create(*aa, dt));
+    }
+    Rcpp::XPtr< std::shared_ptr<slice_time_cube> > p(x, true) ;
+    return p;
+  } 
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
+
+
+// [[Rcpp::export]]
+SEXP libgdalcubes_create_slice_space_cube(SEXP pin, std::vector<double> loc, std::vector<int32_t> i) {
+  try {
+    Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr< std::shared_ptr<cube> >>(pin);
+    
+    std::shared_ptr<slice_space_cube>* x;
+    if (loc.empty()) {
+      x = new std::shared_ptr<slice_space_cube>(slice_space_cube::create(*aa, i[0], i[1]));
+    }
+    else {
+      x = new std::shared_ptr<slice_space_cube>(slice_space_cube::create(*aa, loc[0], loc[1]));
+    }
+    Rcpp::XPtr< std::shared_ptr<slice_space_cube> > p(x, true) ;
+    return p;
+  } 
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
+
+
+
+// [[Rcpp::export]]
+SEXP libgdalcubes_create_crop_cube(SEXP pin, Rcpp::List extent, std::vector<int32_t> iextent, std::string snap) {
+  try {
+    Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr< std::shared_ptr<cube> >>(pin);
+    std::shared_ptr<crop_cube>* x;
+    
+    if (iextent.empty()) {
+      // x = new std::shared_ptr<crop_cube>(crop_cube::create(*aa, Rcpp::as<double>(extent["left"]), 
+      //                                                      Rcpp::as<double>(extent["right"]), Rcpp::as<double>(extent["bottom"]), 
+      //                                                      Rcpp::as<double>(extent["top"]), Rcpp::as<std::string>(extent["t0"]),  
+      //                                                      Rcpp::as<std::string>(extent["t1"]), Rcpp::as<std::string>(snap)));
+      x = new std::shared_ptr<crop_cube>(crop_cube::create(*aa, (extent["left"]), 
+                                                           (extent["right"]), (extent["bottom"]), 
+                                                           (extent["top"]), (extent["t0"]),  
+                                                           (extent["t1"]), (snap)));
+    }
+    else {
+      x = new std::shared_ptr<crop_cube>(crop_cube::create(*aa, iextent[0], iextent[1], iextent[2], iextent[3], iextent[4], iextent[5]));
+    }
+    Rcpp::XPtr< std::shared_ptr<crop_cube> > p(x, true) ;
+    return p;
+  } 
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
 
 
 // [[Rcpp::export]]

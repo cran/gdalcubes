@@ -795,10 +795,6 @@ class cube : public std::enable_shared_from_this<cube> {
 
     void write_single_chunk_netcdf(chunkid_t id, std::string path, uint8_t compression_level = 0);
 
-
-
-
-
     /**
      * @brief Writes a data cube as a collection of PNG files
      *
@@ -831,13 +827,6 @@ class cube : public std::enable_shared_from_this<cube> {
                               std::map<std::string, std::string> creation_options = std::map<std::string, std::string>(),
                               bool drop_empty_slices = false,
                               std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
-
-
-
-
-
-
-
 
     /**
      * Get the cube's bands
@@ -895,6 +884,15 @@ class cube : public std::enable_shared_from_this<cube> {
      * @brief List of cube instances that take this object as input (successors)
      */
     std::vector<std::weak_ptr<cube>> _succ;
+
+
+    /**
+     * @brief Optimization flag defining whether pixel values depend on pixel values located somewhere else
+     */
+    bool _optim_is_local; // TODO
+    bool _optim_is_chunk_local;  // TODO
+    bool _optim_reccomend_cache_input; // TODO
+
 };
 
 }  // namespace gdalcubes

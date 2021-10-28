@@ -27,15 +27,18 @@
 #ifndef GDALCUBES_H
 #define GDALCUBES_H
 
+#include "aggregate_time.h"
 #include "apply_pixel.h"
 #include "build_info.h"
 #include "config.h"
 #include "cube.h"
+#include "crop.h"
 #include "dummy.h"
 #include "fill_time.h"
 #include "filter_geom.h"
 #include "filter_pixel.h"
 #include "image_collection_cube.h"
+#include "image_collection_ops.h"
 #include "join_bands.h"
 #include "ncdf_cube.h"
 #include "progress.h"
@@ -44,6 +47,9 @@
 #include "rename_bands.h"
 #include "select_bands.h"
 #include "select_time.h"
+#include "simple_cube.h"
+#include "slice_time.h"
+#include "slice_space.h"
 #include "stream.h"
 #include "stream_apply_pixel.h"
 #include "stream_apply_time.h"
@@ -52,7 +58,6 @@
 #include "utils.h"
 #include "vector_queries.h"
 #include "window_time.h"
-#include "image_collection_ops.h"
 
 #ifndef GDALCUBES_NO_SWARM
 #include "swarm.h"

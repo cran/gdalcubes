@@ -273,11 +273,11 @@ class cube_stref {
     //virtual std::unique_ptr<cube_stref> copy() = 0;
 
     static std::string type_string(std::shared_ptr<cube_stref> obj) {
-        if (std::dynamic_pointer_cast<cube_stref_regular>(obj) != nullptr) {
-            return "cube_stref_regular";
-        }
         if (std::dynamic_pointer_cast<cube_stref_labeled_time>(obj) != nullptr) {
             return "cube_stref_labeled_time";
+        }
+        if (std::dynamic_pointer_cast<cube_stref_regular>(obj) != nullptr) {
+            return "cube_stref_regular";
         }
         return "";
     }
@@ -409,8 +409,8 @@ class cube_stref_regular : public cube_stref {
 
     virtual void dt(duration dt) {
         //if (dt.dt_unit != _dt.dt_unit) {
-        _t0.unit() = dt.dt_unit;
-        _t1.unit() = dt.dt_unit;
+        _t0.unit(dt.dt_unit);
+        _t1.unit(dt.dt_unit);
         //}
         duration dtotal = _t1 - _t0;  // + 1 if include end date2
         dtotal.dt_interval += 1;
@@ -659,8 +659,8 @@ class cube_stref_labeled_time : public cube_stref_regular {
     }
 
     virtual void dt(duration dt) override {
-        _t0.unit() = dt.dt_unit;
-        _t1.unit() = dt.dt_unit;
+        _t0.unit(dt.dt_unit);
+        _t1.unit(dt.dt_unit);
         _dt = dt;
     }
 
