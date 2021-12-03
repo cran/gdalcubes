@@ -1,5 +1,5 @@
 ## ----setup, include = FALSE---------------------------------------------------
-ev = Sys.getenv("USER") == "marius"
+ev = unname(Sys.info()["user"]) == "marius"
 knitr::opts_chunk$set(
   collapse = TRUE,
   eval = ev
@@ -32,7 +32,7 @@ srs(x)
 ## -----------------------------------------------------------------------------
 srs="+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
 MOD11A2.col = image_collection(img_col_file)
-v = cube_view(srs=srs, extent=MOD11A2.col, nx = 400, dt="P1M", aggregation = "mean")
+v = cube_view(srs=srs, extent=MOD11A2.col, nx = 200, dt="P1M", aggregation = "mean")
 v
 MOD11A2.cube = raster_cube(MOD11A2.col, v)
 MOD11A2.cube
