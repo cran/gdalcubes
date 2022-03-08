@@ -16,47 +16,63 @@ std::shared_ptr<chunk_data> stream_reduce_time_cube::read_chunk(chunkid_t id) {
     coords_nd<uint32_t, 4> size_btyx = {_nbands, 1, size_tyx[1], size_tyx[2]};
     out->size(size_btyx);
 
-    // Fill buffers accordingly
-    out->buf(std::calloc(size_btyx[0] * size_btyx[1] * size_btyx[2] * size_btyx[3], sizeof(double)));
-    double *begin = (double *)out->buf();
-    double *end = ((double *)out->buf()) + size_btyx[0] * size_btyx[1] * size_btyx[2] * size_btyx[3];
-    std::fill(begin, end, NAN);
+
 
     // 1. read everything to input buffer (for first version, can be memory-intensive, same as rechunk_merge_time)
     std::shared_ptr<chunk_data> inbuf = std::make_shared<chunk_data>();
     coords_nd<uint32_t, 4> in_size_btyx = {uint32_t(_in_cube->size_bands()), _in_cube->size_t(), size_tyx[1],
                                            size_tyx[2]};
     inbuf->size(in_size_btyx);
-    inbuf->buf(std::calloc(in_size_btyx[0] * in_size_btyx[1] * in_size_btyx[2] * in_size_btyx[3], sizeof(double)));
-    double *inbegin = (double *)inbuf->buf();
-    double *inend =
-        ((double *)inbuf->buf()) + in_size_btyx[0] * in_size_btyx[1] * in_size_btyx[2] * in_size_btyx[3];
-    std::fill(inbegin, inend, NAN);
-
     uint32_t ichunk = 0;
+    bool empty = true;
+    bool initialized = false;
     for (chunkid_t i = id;
          i < _in_cube->count_chunks(); i += _in_cube->count_chunks_x() * _in_cube->count_chunks_y()) {
         std::shared_ptr<chunk_data> x = _in_cube->read_chunk(i);
-        for (uint16_t ib = 0; ib < x->size()[0]; ++ib) {
-            for (uint32_t it = 0; it < x->size()[1]; ++it) {
-                for (uint32_t ixy = 0; ixy < x->size()[2] * x->size()[3]; ++ixy) {
-                    ((double *)inbuf->buf())[ib * _in_cube->size_t() * x->size()[2] * x->size()[3] +
-                                             (it + ichunk * _in_cube->chunk_size()[0]) * x->size()[2] *
-                                                 x->size()[3] +
-                                             ixy] =
-                        ((double *)x->buf())[ib * x->size()[1] * x->size()[2] * x->size()[3] +
-                                             it * x->size()[2] * x->size()[3] + ixy];
+        if (!x->empty()) {
+
+            if (!initialized) {
+                // Fill buffers with NAN
+                out->buf(std::calloc(size_btyx[0] * size_btyx[1] * size_btyx[2] * size_btyx[3], sizeof(double)));
+                double *begin = (double *)out->buf();
+                double *end = ((double *)out->buf()) + size_btyx[0] * size_btyx[1] * size_btyx[2] * size_btyx[3];
+                std::fill(begin, end, NAN);
+
+                inbuf->buf(std::calloc(in_size_btyx[0] * in_size_btyx[1] * in_size_btyx[2] * in_size_btyx[3], sizeof(double)));
+                double *inbegin = (double *)inbuf->buf();
+                double *inend =
+                    ((double *)inbuf->buf()) + in_size_btyx[0] * in_size_btyx[1] * in_size_btyx[2] * in_size_btyx[3];
+                std::fill(inbegin, inend, NAN);
+
+                initialized  = true;
+            }
+            uint32_t nt = _in_cube->size_t();
+            for (uint16_t ib = 0; ib < x->size()[0]; ++ib) {
+                for (uint32_t it = 0; it < x->size()[1]; ++it) {
+                    for (uint32_t ixy = 0; ixy < x->size()[2] * x->size()[3]; ++ixy) {
+                        ((double *)inbuf->buf())[ib * nt * x->size()[2] * x->size()[3] +
+                                                 (it + ichunk * _in_cube->chunk_size()[0]) * x->size()[2] *
+                                                     x->size()[3] +
+                                                 ixy] =
+                            ((double *)x->buf())[ib * x->size()[1] * x->size()[2] * x->size()[3] +
+                                                 it * x->size()[2] * x->size()[3] + ixy];
+                    }
                 }
             }
+            empty = false;
         }
         ++ichunk;
+    }
+    // check if inbuf is completely empty and if yes, avoid streaming at all and return empty chunk
+    if (empty) {
+        return std::make_shared<chunk_data>();
     }
 
     // generate in and out filename
     std::string f_in = filesystem::join(config::instance()->get_streaming_dir(),
-                                        utils::generate_unique_filename(12, ".stream_", "_in"));
+                                        utils::generate_unique_filename(12, ".stream_" + std::to_string(id) + "_", "_in"));
     std::string f_out = filesystem::join(config::instance()->get_streaming_dir(),
-                                         utils::generate_unique_filename(12, ".stream_", "_out"));
+                                         utils::generate_unique_filename(12, ".stream_" + std::to_string(id) + "_", "_out"));
 
     std::string errstr;  // capture error string
 
@@ -108,28 +124,23 @@ std::shared_ptr<chunk_data> stream_reduce_time_cube::read_chunk(chunkid_t id) {
     /* setenv / _putenv is not thread-safe, we need to get a mutex until the child process has been started. */
     static std::mutex mtx;
     mtx.lock();
-#ifdef _WIN32
-    _putenv("GDALCUBES_STREAMING=1");
-    //_putenv((std::string("GDALCUBES_STREAMING_DIR") + "=" + config::instance()->get_streaming_dir().c_str()).c_str());
-    _putenv((std::string("GDALCUBES_STREAMING_CHUNK_ID") + "=" + std::to_string(id)).c_str());
-    _putenv((std::string("GDALCUBES_STREAMING_FILE_IN") + "=" + f_in.c_str()).c_str());
-    _putenv((std::string("GDALCUBES_STREAMING_FILE_OUT") + "=" + f_out.c_str()).c_str());
-#else
-    setenv("GDALCUBES_STREAMING", "1", 1);
-    // setenv("GDALCUBES_STREAMING_DIR", config::instance()->get_streaming_dir().c_str(), 1);
-    setenv("GDALCUBES_STREAMING_CHUNK_ID", std::to_string(id).c_str(), 1);
-    setenv("GDALCUBES_STREAMING_FILE_IN", f_in.c_str(), 1);
-    setenv("GDALCUBES_STREAMING_FILE_OUT", f_out.c_str(), 1);
-#endif
+    utils::env::instance().set({
+        {"GDALCUBES_STREAMING", "1"},
+        {"GDALCUBES_STREAMING_CHUNK_ID", std::to_string(id)},
+        {"GDALCUBES_STREAMING_FILE_IN", f_in},
+        {"GDALCUBES_STREAMING_FILE_OUT", f_out}});
 
     // start process
+    TinyProcessLib::Config pconf;
+    pconf.show_window = TinyProcessLib::Config::ShowWindow::hide;
     TinyProcessLib::Process process(
         _cmd, "", [](const char *bytes, std::size_t n) {},
         [&errstr](const char *bytes, std::size_t n) {
-            errstr = std::string(bytes, n);
-            GCBS_DEBUG(errstr);
+            std::string s(bytes, n);
+            errstr = errstr + s;
         },
-        false);
+        false,pconf);
+    utils::env::instance().unset_all();
     mtx.unlock();
     auto exit_status = process.get_exit_status();
     filesystem::remove(f_in);
@@ -142,6 +153,7 @@ std::shared_ptr<chunk_data> stream_reduce_time_cube::read_chunk(chunkid_t id) {
         throw std::string("ERROR in stream_reduce_time_cube::read_chunk(): external program returned exit code " +
                           std::to_string(exit_status));
     }
+    GCBS_DEBUG(errstr);
 
     // read output data
     std::ifstream f_out_stream(f_out, std::ios::in | std::ios::binary);

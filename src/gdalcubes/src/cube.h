@@ -350,10 +350,24 @@ class chunk_data {
      * @brief Check whether there is data in the buffer
      * @return true, if there is no data in the buffer (either size == 0, or buf == nullptr)
      */
-    inline bool empty() {
+    bool empty() {
         if (_size[0] * _size[1] * _size[2] * _size[3] == 0) return true;
         if (!_buf) return true;
         return false;
+    }
+
+    /**
+     * @brief Check if the buffer contains only NAN values
+     * @return true, if all values are NAN, or the chunk is empty
+     */
+    bool all_nan() {
+        if (empty()) return true;
+        for (uint32_t i=0; i< _size[0] * _size[1] * _size[2] * _size[3]; ++i) {
+            if (!std::isnan(((double*)_buf)[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -394,6 +408,24 @@ class chunk_data {
      * @param s new size
      */
     inline void size(coords_nd<uint32_t, 4> s) { _size = s; }
+
+    /**
+     * @brief Write a single chunk to a netCDF file
+     *
+     * @details
+     * The produced netCDF file will NOT contain the spatial reference
+     * and dimension metadata, i.e. only the size of dimensions and the actual data
+     * @param path output path
+     * @param netCDF compression level (0 = no compression, 1 = fastest, 9 = smallest)
+     * @force force creation of a netCDF file even if the chunk is empty or NaN only
+     */
+    void write_ncdf(std::string path, uint8_t compression_level = 0, bool force = false);
+
+    /**
+     * @brief Read a single chunk from a netCDF file
+     * @param path input path
+     */
+    void read_ncdf(std::string path);
 
    private:
     void *_buf;
@@ -792,6 +824,8 @@ class cube : public std::enable_shared_from_this<cube> {
 
     void write_chunks_netcdf(std::string dir, std::string name = "", uint8_t compression_level = 0,
                              std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
+
+    std::shared_ptr<chunk_data> to_double_array(std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
 
     void write_single_chunk_netcdf(chunkid_t id, std::string path, uint8_t compression_level = 0);
 

@@ -33,6 +33,8 @@
 
 namespace gdalcubes {
 
+// TODO: use a global seed and include something like process id in seed
+// to avoid conflicts when gdalcubes runs in parallel processes
 std::string utils::generate_unique_filename(uint16_t n, std::string prefix, std::string suffix) {
     static std::mt19937 gen(time(NULL));  //Standard mersenne_twister_engine seeded with rd()
     static const std::string LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -122,6 +124,52 @@ std::string utils::dbl_to_string(double x, uint8_t precision) {
 std::string utils::hash(std::string in) {
     std::size_t str_hash = std::hash<std::string>{}(in);
     return std::to_string(str_hash);
+}
+
+void utils::env::set(std::map<std::string, std::string> vars) {
+    for (auto it = vars.begin(); it != vars.end(); ++it) {
+#ifdef _WIN32
+        _putenv((it->first + "=" + it->second).c_str());
+#else
+        setenv(it->first.c_str(), it->second.c_str(), 1);
+#endif
+        _vars[it->first] = it->second;
+    }
+}
+
+void utils::env::unset(std::set<std::string> var_names) {
+    for (auto it = var_names.begin(); it != var_names.end(); ++it) {
+#ifdef _WIN32
+        _putenv((*it + "=").c_str());
+#else
+        unsetenv((*it).c_str());
+#endif
+        auto i = _vars.find(*it);
+        if (i != _vars.end()) {
+            _vars.erase(i);
+        }
+    }
+}
+
+void utils::env::unset_all() {
+    for (auto it = _vars.begin(); it != _vars.end(); ++it) {
+#ifdef _WIN32
+        _putenv((it->first + "=").c_str());
+#else
+        unsetenv(it->first.c_str());
+#endif
+    }
+    _vars.clear();
+}
+
+std::string utils::env::to_string() {
+    std::string out;
+    out = "{";
+    for (auto it = _vars.begin(); it != _vars.end(); ++it) {
+        out += "{\"" + it->first + "\":\"" + it->second + "\"},";
+    }
+    out[out.length()-1] = '}';
+    return out;
 }
 
 }  // namespace gdalcubes

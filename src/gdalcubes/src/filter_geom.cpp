@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2020 Marius Appel <marius.appel@uni-muenster.de>
+    Copyright (c) 2022 Marius Appel <marius.appel@uni-muenster.de>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -97,17 +97,17 @@ filter_geom_cube::filter_geom_cube(std::shared_ptr<cube> in, std::string wkt, st
     p->getEnvelope(&poly_extent);
 
     int32_t iminx = std::floor(poly_extent.MinX - _in_cube->st_reference()->left()) / _in_cube->st_reference()->dx();
-    int32_t imaxx = std::ceil(poly_extent.MaxX - _in_cube->st_reference()->left()) / _in_cube->st_reference()->dx();
+    int32_t imaxx = std::floor(poly_extent.MaxX - _in_cube->st_reference()->left()) / _in_cube->st_reference()->dx();
 
     // TODO: check whether bottom / top is correct
     int32_t iminy = std::floor(poly_extent.MinY - _in_cube->st_reference()->bottom()) / _in_cube->st_reference()->dy();
-    int32_t imaxy = std::ceil(poly_extent.MaxY - _in_cube->st_reference()->bottom()) / _in_cube->st_reference()->dy();
+    int32_t imaxy = std::floor(poly_extent.MaxY - _in_cube->st_reference()->bottom()) / _in_cube->st_reference()->dy();
 
     bool within =
-        iminx > 0 && uint32_t(iminx) < _in_cube->st_reference()->nx() &&
-        imaxx > 0 && uint32_t(imaxx) < _in_cube->st_reference()->nx() &&
-        iminy > 0 && uint32_t(iminy) < _in_cube->st_reference()->ny() &&
-        imaxy > 0 && uint32_t(imaxy) < _in_cube->st_reference()->ny();
+        iminx >= 0 && uint32_t(iminx) < _in_cube->st_reference()->nx() &&
+        imaxx >= 0 && uint32_t(imaxx) < _in_cube->st_reference()->nx() &&
+        iminy >= 0 && uint32_t(iminy) < _in_cube->st_reference()->ny() &&
+        imaxy >= 0 && uint32_t(imaxy) < _in_cube->st_reference()->ny();
 
     if (!within) {
         GCBS_ERROR("Polygon must be located completely within the data cube");
@@ -160,12 +160,7 @@ std::shared_ptr<chunk_data> filter_geom_cube::read_chunk(chunkid_t id) {
         return out;  // chunk does not intersect with polygon
     }
 
-    std::shared_ptr<chunk_data> in = _in_cube->read_chunk(id);
-    if (in->empty()) {
-        return out;
-    }
-    out->size({_bands.count(), in->size()[1], in->size()[2], in->size()[3]});
-    out->buf(std::calloc(_bands.count() * in->size()[1] * in->size()[2] * in->size()[3], sizeof(double)));
+
 
     bounds_st chunk_bounds = bounds_from_chunk(id);
 
@@ -180,6 +175,7 @@ std::shared_ptr<chunk_data> filter_geom_cube::read_chunk(chunkid_t id) {
     OGRLayer *layer;
     layer = in_ogr_dataset->GetLayer(0);
     if (layer == NULL) {
+        GDALClose(in_ogr_dataset);
         GCBS_ERROR("invalid OGR layer");
         throw std::string("invalid OGR layer");
     }
@@ -198,6 +194,7 @@ std::shared_ptr<chunk_data> filter_geom_cube::read_chunk(chunkid_t id) {
 
     // iterate over all features
     bool chunk_within_polygon = false;
+    bool outside = false;
     layer->ResetReading();
     OGRFeature *cur_feature = layer->GetNextFeature();  // assumption, there is only one feature
     OGRGeometry *geom = cur_feature->GetGeometryRef();
@@ -205,14 +202,31 @@ std::shared_ptr<chunk_data> filter_geom_cube::read_chunk(chunkid_t id) {
         if (geom->Contains(&pp)) {
             chunk_within_polygon = true;
         }
+        else if (!geom->Intersects(&pp)) {
+            outside = true;
+        }
     }
     OGRFeature::DestroyFeature(cur_feature);
     layer->ResetReading();
 
+    if (outside) {
+        GDALClose(in_ogr_dataset);
+        return out;
+    }
+
+    std::shared_ptr<chunk_data> in = _in_cube->read_chunk(id);
+    if (in->empty()) {
+        GDALClose(in_ogr_dataset);
+        return out;
+    }
+
     if (chunk_within_polygon) {
         //  special case: chunk is completely within polygon -> do not rasterize but simply copy buffers
-        std::memcpy(out->buf(), in->buf(), _bands.count() * in->size()[1] * in->size()[2] * in->size()[3] * sizeof(double));
+        //std::memcpy(out->buf(), in->buf(), _bands.count() * in->size()[1] * in->size()[2] * in->size()[3] * sizeof(double));
+        out = in;
     } else {
+        out->size({_bands.count(), in->size()[1], in->size()[2], in->size()[3]});
+        out->buf(std::calloc(_bands.count() * in->size()[1] * in->size()[2] * in->size()[3], sizeof(double)));
         double *begin = (double *)out->buf();
         double *end = ((double *)out->buf()) + _bands.count() * in->size()[1] * in->size()[2] * in->size()[3];
         std::fill(begin, end, NAN);
@@ -248,8 +262,9 @@ std::shared_ptr<chunk_data> filter_geom_cube::read_chunk(chunkid_t id) {
 
         GDALRasterizeOptions *rasterize_opts = GDALRasterizeOptionsNew(rasterize_args.List(), NULL);
         if (rasterize_opts == NULL) {
+            GDALClose(in_ogr_dataset);
             GDALRasterizeOptionsFree(rasterize_opts);
-            throw std::string("ERROR in vector_queries::zonal_statistics(): cannot create gdal_rasterize options.");
+            throw std::string("ERROR in filter_geom_cub::read_chunk(): cannot create gdal_rasterize options.");
         }
         int err = 0;
         GDALDataset *gdal_rasterized = (GDALDataset *)GDALRasterize("", NULL, (GDALDatasetH)in_ogr_dataset, rasterize_opts, &err);

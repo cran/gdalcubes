@@ -1,3 +1,22 @@
+# gdalcubes 0.6.0 (2022-03-07)
+
+* major stability improvements:
+  * fix unexpected stack overflows due to to GDAL error handler from `sf` calling `Rf_warning()`
+  * if GDALOpen() fails to read an image, it will now be simply ignored but not stop processing the current chunk
+  * improved handling and checks for empty chunks in data cube operations 
+  * parallel processing now uses worker processes instead of threads
+* new `extract_geom()` function to extract data cube values from spatial or spatiotemporal features and to compute summary statistics
+* remove functions `query_points()`, `query_timeseries()`, and `zonal_statistics()` in favor of `extract_geom()`
+* fix `filter_geom()` issues with larger polygons 
+* fix `filter_geom()` error while checking if polygon is within data cube
+* use WKT strings or authority codes in image collections instead of proj4 strings
+* chunk sizes can now be set as a global package option either as constant sizes or as a function of data cube size
+* default chunk sizes consider the number of parallel worker processes 
+* `animate()` now can produce mp4 and GIF animations
+* `animate()` works for larger image sequences using the `av` or `gifski` packages
+* remove dependency on `RcppProgress`
+
+
 # gdalcubes 0.5.1 (2021-02-12)
 
 * fix CRAN vignette issue on Mac due to data download failures

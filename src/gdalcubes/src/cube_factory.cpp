@@ -31,6 +31,7 @@
 #include "crop.h"
 #include "dummy.h"
 #include "external/json11/json11.hpp"
+#include "extract_geom.h"
 #include "filesystem.h"
 #include "fill_time.h"
 #include "filter_geom.h"
@@ -39,6 +40,7 @@
 #include "join_bands.h"
 #include "ncdf_cube.h"
 #include "reduce_time.h"
+#include "reduce_space.h"
 #include "rename_bands.h"
 #include "select_bands.h"
 #include "select_time.h"
@@ -97,7 +99,7 @@ void cube_factory::register_default() {
             for (uint16_t i = 0; i < j["reducer_bands"].array_items().size(); ++i) {
                 band_reducers.push_back(std::make_pair(j["reducer_bands"][i][0].string_value(), j["reducer_bands"][i][1].string_value()));
             }
-            auto x = reduce_time_cube::create(instance()->create_from_json(j["in_cube"]), band_reducers);
+            auto x = reduce_space_cube::create(instance()->create_from_json(j["in_cube"]), band_reducers);
             return x;
         }));
 
@@ -240,7 +242,7 @@ void cube_factory::register_default() {
 
     cube_generators.insert(std::make_pair<std::string, std::function<std::shared_ptr<cube>(json11::Json&)>>(
         "stream", [](json11::Json& j) {
-            auto x = stream_cube::create(instance()->create_from_json(j["in_cube"]), j["command"].string_value(), j["file_streaming"].bool_value());
+            auto x = stream_cube::create(instance()->create_from_json(j["in_cube"]), j["command"].string_value());
             return x;
         }));
 
@@ -272,6 +274,14 @@ void cube_factory::register_default() {
                                               j["ix_min"].int_value(), j["ix_max"].int_value(),
                                               j["iy_min"].int_value(), j["iy_max"].int_value(),
                                               j["it_min"].int_value(), j["it_max"].int_value());
+            return x;
+        }));
+
+    cube_generators.insert(std::make_pair<std::string, std::function<std::shared_ptr<cube>(json11::Json&)>>(
+        "extract", [](json11::Json& j) {
+            auto x = extract_geom::create(instance()->create_from_json(j["in_cube"]),
+                                          j["ogr_dataset"].string_value(), j["time_column"].string_value(),
+                                          j["ogr_layer"].string_value());
             return x;
         }));
 
@@ -313,6 +323,13 @@ void cube_factory::register_default() {
         "dummy", [](json11::Json& j) {
             cube_view v = cube_view::read_json_string(j["view"].dump());
             auto x = dummy_cube::create(v, j["nbands"].int_value(), j["fill"].number_value());
+            x->set_chunk_size(j["chunk_size"][0].int_value(), j["chunk_size"][1].int_value(), j["chunk_size"][2].int_value());
+            return x;
+        }));
+    cube_generators.insert(std::make_pair<std::string, std::function<std::shared_ptr<cube>(json11::Json&)>>(
+        "empty", [](json11::Json& j) {
+            cube_view v = cube_view::read_json_string(j["view"].dump());
+            auto x = empty_cube::create(v, j["nbands"].int_value());
             x->set_chunk_size(j["chunk_size"][0].int_value(), j["chunk_size"][1].int_value(), j["chunk_size"][2].int_value());
             return x;
         }));
