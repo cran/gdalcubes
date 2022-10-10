@@ -40,7 +40,7 @@ This function returns a proxy object, i.e., it will not start any computations b
 if (!file.exists(file.path(tempdir(), "L8.db"))) {
   L8_files <- list.files(system.file("L8NY18", package = "gdalcubes"),
                          ".TIF", recursive = TRUE, full.names = TRUE)
-  create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db")) 
+  create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"), quiet = TRUE) 
 }
 
 L8.col = image_collection(file.path(tempdir(), "L8.db"))
@@ -52,7 +52,7 @@ L8.b02 = select_bands(L8.cube, c("B02"))
 L8.b02.median = reduce_space(L8.b02, "median(B02)")  
 L8.b02.median
 \donttest{
-plot(L8.b02.median, key.pos=1)
+plot(L8.b02.median)
 }
 
 }

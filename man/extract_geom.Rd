@@ -30,7 +30,7 @@ extract_geom(
 \item{reduce_time}{logical; if TRUE, time is ignored when \code{FUN} is applied}
 }
 \value{
-A data.frame with columns FID, time, and data cube bands / variables
+A data.frame with columns FID, time, and data cube bands / variables, see Details
 }
 \description{
 Extract pixel values of a data cube from a set of spatial or spatiotemporal features. 
@@ -44,6 +44,9 @@ POINTS, LINES, POLYGONS, MULTI*, and more. If no time information is provided
 in one of the arguments \code{datetime} or \code{time_column}, the full time series
 of pixels with regard to the features are returned. 
 
+Notice that feature identifiers in the \code{FID} column typically correspond to the row names / numbers 
+of the provided sf object. This can be used to combine the output with the original geometries, e.g., using \code{\link[base:merge]{merge()}}.
+ 
 Pixels with missing values are automatically dropped from the result. It is hence not
 guaranteed that the result will contain rows for all input features.
 
@@ -59,7 +62,7 @@ To ignore time and produce a single value per feature, \code{reduce_time} can be
 if (!file.exists(file.path(tempdir(), "L8.db"))) {
   L8_files <- list.files(system.file("L8NY18", package = "gdalcubes"),
                          ".TIF", recursive = TRUE, full.names = TRUE)
-  create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"))
+  create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"), quiet = TRUE)
 }
 L8.col = image_collection(file.path(tempdir(), "L8.db"))
 v = cube_view(srs="EPSG:32618", dy=1000, dx=1000, dt="P1M",

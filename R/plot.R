@@ -10,29 +10,37 @@
 #' @param t integer vector with time indexes to plot (this must be time indexes, not date / time)
 #' @param rgb bands used to assign RGB color channels, vector of length 3 (this must be band numbers, not band names)
 #' @param zlim vector of length 2, defining the minimum and maximum values to either derive breaks, or define black and white values in RGB plots
+#' @param gamma gamma correction value, used for RGB plots only
 #' @param periods.in.title logical value, if TRUE, the title of plots includes the datetime period length as ISO 8601 string
 #' @param join.timeseries logical, for pure time-series plots, shall time series of multiple bands be plotted in a single plot (with different colors)?
 #' @param axes logical, if TRUE, plots include axes
 #' @param ncol number of columns for arranging plots with  \code{layout()}, see Details 
 #' @param nrow number of rows for arranging plots with  \code{layout()}, see Details
 #' @param na.color color used to plot NA pixels
+#' @param downsample length-one integer or logical value used to select only every i-th pixel (in space only) for faster plots; by default (TRUE), downsampling will be determined automatically based on the resolution of the graphics device; set to FALSE to avoid downsampling.
 #' @param ... further arguments passed to \code{image.default}
 #' @note If caching is enabled for the package (see \code{\link{gdalcubes_options}}), repeated calls of plot
 #' for the same data cube will not reevaluate the cube. Instead, the temporary result file will be reused, if possible.
 #' @note Some parts of the function have been copied from the stars package (c) Edzer Pebesma
 #' @details 
 #' The style of the plot depends on provided parameters and on the shape of the cube, i.e., whether it is a pure time series and whether it contains multiple bands or not.
-#' Multi-band, multi-temporal images will be arranged with \code{layout()} such that bands are represented by the x axis and time is represented by the y axis.
-#' Time series plots can be combined to a single plot by setting \code{join.timeseries = TRUE}. For other cases, a default arrangement of the plots is derived, trying to reach
-#' a square overall plot. The layout can be controlled with \code{ncol} and \code{nrow}, which define the number of rows and columns in the plot layout. Typically, only one of 
+#' Multi-band, multi-temporal images will be arranged with \code{layout()} such that bands are represented by columns and time is represented by rows.
+#' Time series plots can be combined to a single plot by setting \code{join.timeseries = TRUE}. The layout can be controlled with \code{ncol} and \code{nrow}, which define the number of rows and columns in the plot layout. Typically, only one of 
 #' \code{ncol} and \code{nrow} is provided. For multi-band, multi-temporal plots, the actual number of rows or columns can be less if the input cube has less bands or time slices.
+#' 
+#' The \code{downsample} argument is used to speed-up plotting if the cube has much more pixels than the graphics device. 
+#' If set to a scalar integer value > 1, the value is used to skip pixels in the spatial dimensions. For example, setting \code{downsample = 4} means
+#' that every fourth pixel is used in the spatial dimensions. If TRUE (the default) \code{downsample} is derived automatically based on the 
+#' sizes of the cube and the graphics device. If 1 or FALSE, no additional downsampling is performed. Notice that downsampling is only used for plotting.
+#' The size of the data cube (and hence the computation time to process the data cube) is not modified.
+#' 
 #' @examples 
 #' # create image collection from example Landsat data only 
 #' # if not already done in other examples
 #' if (!file.exists(file.path(tempdir(), "L8.db"))) {
 #'   L8_files <- list.files(system.file("L8NY18", package = "gdalcubes"),
 #'                          ".TIF", recursive = TRUE, full.names = TRUE)
-#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db")) 
+#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"), quiet = TRUE) 
 #' }
 #' 
 #' L8.col = image_collection(file.path(tempdir(), "L8.db"))
@@ -59,14 +67,24 @@ plot.cube  <-
            t = NULL,
            rgb = NULL,
            zlim = NULL,
+           gamma = 1,
            periods.in.title = TRUE,
            join.timeseries = FALSE,
            axes = TRUE,
            ncol = NULL,
            nrow = NULL,
+           downsample = TRUE,
            na.color = "#AAAAAA") {
     stopifnot(is.cube(x))
     size = c(nbands(x), size(x))
+    
+    
+    def.par <-
+      par(no.readonly = TRUE) 
+    on.exit({
+      layout(matrix(1))
+      par(def.par)  
+    })
     
     if (size[3] == 1 && size[4] == 1) {
       # cube is a (potentially multi-band) time-series
@@ -105,9 +123,6 @@ plot.cube  <-
         write_ncdf(x, fn)
       }
       
-      
-      def.par <-
-        par(no.readonly = TRUE) # save default, for resetting...
       
       f <- ncdf4::nc_open(fn)
       # derive name of variables but ignore non three-dimensional variables (e.g. crs)
@@ -216,7 +231,7 @@ plot.cube  <-
 
         layout(matrix(c((1:size[1]), rep(
           0, irow * icol - size[1]
-        )), irow, icol, byrow = T), respect = TRUE)
+        )), irow, icol, byrow = T), respect = FALSE)
         for (b in vars) {
           dat <- ncdf4::ncvar_get(f, b, raw_datavals = TRUE)
           if (!is.null(zlim)) {
@@ -255,7 +270,7 @@ plot.cube  <-
       
     }
     else {
-      # non time-series-only plot
+      # not a time-series-only plot
       stopifnot(!(!is.null(rgb) &&
                     !is.null(bands))) # RGB and bands parameters are mutually exclusive
       if (!is.null(rgb) && !is.null(key.pos)) {
@@ -265,6 +280,7 @@ plot.cube  <-
       is.wholenumber <-
         function(x, tol = .Machine$double.eps ^ 0.5)
           abs(x - round(x)) < tol
+      
       if (!is.null(bands)) {
         if (is.numeric(bands)) {
           stopifnot(all(is.wholenumber(bands)))
@@ -281,6 +297,7 @@ plot.cube  <-
       else {
         bands <- 1:size[1]
       }
+    
       if (!is.null(rgb)) {
         stopifnot(length(rgb) == 3)
         stopifnot(size[1] >= 3)
@@ -314,68 +331,11 @@ plot.cube  <-
       else {
         t <- 1:size[2]
       }
-      if (is.null(rgb) & size[1] > 1 & size[2] > 1) {
-        maxbands = ifelse(is.null(ncol), 5, ncol)
-        maxt = ifelse(is.null(nrow), 5, nrow)
-        if (size[1] > maxbands)
-        {
-          warning(paste("too many bands, plotting only bands 1 to", maxbands))
-          bands = bands[1:maxbands]
-          size[1] = maxbands
-        }
-        if (size[2] > maxt) {
-          warning(paste("too many time instances, plotting only times 1 to", maxt))
-          t = t[1:maxt]
-          size[2] = maxt
-        }
-      }
       
-      else {
-        if (is.null(rgb)) {
-          if (!is.null(ncol) && !is.null(nrow)) {
-            maxplots = ncol * nrow
-          }
-          else if (!is.null(ncol)) {
-            maxplots = size[1]*size[2] # if only one of ncol and nrow is passed, ignore default max number of plots
-          }
-          else if (!is.null(nrow)) {
-            maxplots = size[1]*size[2] # if only one of ncol and nrow is passed, ignore default max number of plots
-          }
-          else {
-            maxplots = 25
-          }
-            
-          if (size[1] > maxplots) {
-            warning(paste("too many bands, plotting only bands 1 to", maxplots))
-            bands = bands[1:maxplots]
-            size[1] = maxplots
-          }
-          else if (size[2] > maxplots) {
-            warning(paste("too many time instances, plotting only times 1 to", maxplots))
-            t = t[1:maxplots]
-          }
-        }
-        else {
-          if (!is.null(ncol) && !is.null(nrow)) {
-            maxplots = ncol * nrow
-          }
-          else if (!is.null(ncol)) {
-            maxplots = size[2] # if only one of ncol and nrow is passed, ignore default max number of plots
-          } 
-          else if (!is.null(nrow)) {
-            maxplots = size[2] # if only one of ncol and nrow is passed, ignore default max number of plots
-          }
-          else {
-            maxplots = 25
-          }
-          if (size[2] > maxplots) {
-            warning(paste("too many time instances, plotting only times 1 to", maxplots))
-            t = t[1:maxplots]
-            size[2] = maxplots
-          }
-        }
-      }
-  
+      stopifnot(is.numeric(gamma))
+      stopifnot(gamma > 0)
+      
+      
       if ("ncdf_cube" %in% class(x)) {
         fn = jsonlite::parse_json(as_json(x))$file
         if (is.null(fn)) {
@@ -419,16 +379,17 @@ plot.cube  <-
           icol = ceiling(size[2] / nrow)
         }
         else {
-          icol = min(5, size[2])
-          irow = ceiling(size[2] / icol)
+          # find a good (close to square) layout
+          irow <- round(sqrt(size[2]))
+          icol <- ceiling(size[2] / irow)
         }
         layout(matrix(c(1:size[2], rep(
           0, irow * icol - size[2]
-        )), irow, icol, byrow = T), respect = TRUE)
+        )), irow, icol, byrow = T), respect = FALSE)
       }
       else {
         if (is.null(key.pos)) {
-          if (size[1] == 1 | size[2] == 1) {
+          if (size[1] == 1 || size[2] == 1) {
             if (!is.null(ncol) && !is.null(nrow)) {
               icol = ncol
               irow = nrow
@@ -449,13 +410,14 @@ plot.cube  <-
 
             layout(matrix(c(
               1:(size[1] * size[2]), rep(0, irow * icol - size[1] * size[2])
-            ), irow, icol, byrow = TRUE), respect = TRUE)
+            ), irow, icol, byrow = TRUE), respect = FALSE)
           }
           # general case, time dimension is vertical, bands horizontal
           else {
-           
+            icol = size[1]
+            irow = size[2]
             layout(matrix(1:(size[1] * size[2]), size[2], size[1], byrow =
-                            FALSE), respect = TRUE)
+                            FALSE), respect = FALSE)
           }
         }
         else {
@@ -463,8 +425,9 @@ plot.cube  <-
           ww <- 1
           wh <- 1
           
-          if (size[1] == 1 | size[2] == 1) {
-           
+          if (size[1] == 1 || size[2] == 1) {
+            #icol = size[1]
+            #irow = size[2]
             if (!is.null(ncol) && !is.null(nrow)) {
               icol = ncol
               irow = nrow
@@ -490,7 +453,7 @@ plot.cube  <-
                 ), irow, icol, byrow = TRUE), size[1] * size[2] + 1),
                 widths = rep.int(ww, icol),
                 heights = c(rep.int(wh, irow), s),
-                respect = TRUE
+                respect = FALSE
               ),
               layout(
                 cbind(size[1] * size[2] + 1, matrix(c(
@@ -498,7 +461,7 @@ plot.cube  <-
                 ), irow, icol, byrow = TRUE)),
                 widths = c(s, rep.int(ww, icol)),
                 heights = rep.int(wh, irow),
-                respect = TRUE
+                respect = FALSE
               ),
               layout(
                 rbind(size[1] * size[2] + 1, matrix(c(
@@ -506,7 +469,7 @@ plot.cube  <-
                 ), irow, icol, byrow = TRUE)),
                 widths = rep.int(ww, icol),
                 heights = c(s, rep.int(wh, irow)),
-                respect = TRUE
+                respect = FALSE
               ),
               layout(
                 cbind(matrix(c(
@@ -514,12 +477,14 @@ plot.cube  <-
                 ), irow, icol, byrow = TRUE), size[1] * size[2] + 1),
                 widths = c(rep.int(ww, icol), s),
                 heights = c(rep.int(wh, irow)),
-                respect = TRUE
+                respect = FALSE
               )
             )
           }
           else {
             # general case, time dimension is vertical, bands horizontal
+            icol = size[1]
+            irow = size[2]
             switch (
               key.pos,
               layout(
@@ -528,7 +493,7 @@ plot.cube  <-
                 ), size[1] * size[2] + 1),
                 widths = rep.int(ww, size[1]),
                 heights = c(rep.int(wh, size[2]), s),
-                respect = TRUE
+                respect = FALSE
               ),
               layout(
                 cbind(size[1] * size[2] + 1, matrix(
@@ -536,7 +501,7 @@ plot.cube  <-
                 )),
                 widths = c(s, rep.int(ww, size[1])),
                 heights = rep.int(wh, size[2]),
-                respect = TRUE
+                respect = FALSE
               ),
               layout(
                 rbind(size[1] * size[2] + 1, matrix(
@@ -544,7 +509,7 @@ plot.cube  <-
                 )),
                 widths = rep.int(ww, size[1]),
                 heights = c(s, rep.int(wh, size[2])),
-                respect = TRUE
+                respect = FALSE
               ),
               layout(
                 cbind(matrix(
@@ -552,7 +517,7 @@ plot.cube  <-
                 ), size[1] * size[2] + 1),
                 widths = c(rep.int(ww, size[1]), s),
                 heights = c(rep.int(wh, size[2])),
-                respect = TRUE
+                respect = FALSE
               )
             )
             
@@ -561,6 +526,30 @@ plot.cube  <-
         }
       }
       
+      dev_size = dev.size("px")
+      if (is.null(downsample) || isTRUE(downsample)) {
+        ds_x = max(floor(size[4] / (dev_size[1] / icol)),1)
+        ds_y = max(floor(size[3] / (dev_size[2] / irow)),1)
+        downsample = min(ds_x, ds_y)
+      }
+      else if (isFALSE(downsample)) {
+        downsample = 1
+      }
+      else {
+        if (!is.wholenumber(downsample)) {
+          ds_x = max(floor(size[4] / (dev_size[1] / icol)),1)
+          ds_y = max(floor(size[3] / (dev_size[2] / irow)),1)
+          downsample = min(ds_x, ds_y)
+          warning(paste0("Provided downsampling factor is not an integer number; using ", downsample, " instead"))
+        }
+        if (downsample < 1) {
+          ds_x = max(floor(size[4] / (dev_size[1] / icol)),1)
+          ds_y = max(floor(size[3] / (dev_size[2] / irow)),1)
+          downsample = min(ds_x, ds_y)
+          warning(paste0("Provided downsampling factor is < 1; using ", downsample, " instead"))
+        }
+      }
+  
       dims <- dimensions(x)
       
       f <- ncdf4::nc_open(fn)
@@ -670,6 +659,12 @@ plot.cube  <-
         dat_G <- (dat_G - offset) / scale
         dat_B <- (dat_B - offset) / scale
         
+        if (gamma != 1) {
+          dat_R = dat_R^gamma
+          dat_G = dat_G^gamma
+          dat_B = dat_B^gamma
+        }
+        
         dat_R[which(is.na(dat_R) , arr.ind = T)] <- col2rgb(na.color)[1] / 255
         dat_G[which(is.na(dat_G) , arr.ind = T)] <- col2rgb(na.color)[2] / 255
         dat_B[which(is.na(dat_B) , arr.ind = T)] <- col2rgb(na.color)[3] / 255
@@ -683,19 +678,10 @@ plot.cube  <-
         dat_G[which(dat_G > 1 , arr.ind = T)] <- 1
         dat_B[which(dat_B > 1 , arr.ind = T)] <- 1
         
-        asp = diff(ylim) / diff(xlim)
+        #asp = diff(ylim) / diff(xlim)
         
         xlim_new = xlim
         ylim_new = ylim
-        if (diff(xlim) > diff(ylim)) {
-          ylim_new = c(sum(ylim) / 2 - diff(xlim) / 2 , sum(ylim) / 2 + diff(xlim) /
-                         2)
-        }
-        else if (diff(xlim) < diff(ylim)) {
-          xlim_new = c(sum(xlim) / 2 - diff(ylim) / 2 , sum(xlim) / 2 + diff(ylim) /
-                         2)
-        }
-        
         
         for (ti in 1:size[2]) {
           plot(
@@ -704,7 +690,7 @@ plot.cube  <-
             t = "n",
             ylim = c(ylim_new[1], ylim_new[2]),
             xlim = c(xlim_new[1], xlim_new[2]),
-            asp = 1,
+            asp = asp,
             axes = axes,
             xlab = "",
             ylab = "",
@@ -714,9 +700,13 @@ plot.cube  <-
           
           if (length(dim(dat_R)) == 2) {
             #ar <- array(c(dat_R[size[4]:1,], dat_G[size[4]:1,], dat_B[size[4]:1,]),dim=c(dim(dat_R)[1],dim(dat_R)[2], 3))
-            ar <-
-              array(c(dat_R[, ], dat_G[, ], dat_B[, ]), dim = c(dim(dat_R)[1], dim(dat_R)[2], 3))
+            ar <- array(c(dat_R[, ], dat_G[, ], dat_B[, ]), dim = c(dim(dat_R)[1], dim(dat_R)[2], 3))
             
+            if (downsample > 1) {
+              ds_1_idx = seq(1,dim(ar)[1], by = downsample) 
+              ds_2_idx = seq(1,dim(ar)[2], by = downsample) 
+              ar = ar[ds_1_idx,ds_2_idx,]
+            }
             
             rasterImage(
               aperm(ar, c(2, 1, 3)),
@@ -730,6 +720,11 @@ plot.cube  <-
             #ar <- array(c(dat_R[size[4]:1,,t[ti]], dat_G[size[4]:1,,t[ti]], dat_B[size[4]:1,,t[ti]]),dim=c(dim(dat_R)[1],dim(dat_R)[2], 3))
             ar <-
               array(c(dat_R[, , t[ti]], dat_G[, , t[ti]], dat_B[, , t[ti]]), dim = c(dim(dat_R)[1], dim(dat_R)[2], 3))
+            if (downsample > 1) {
+              ds_1_idx = seq(1,dim(ar)[1], by = downsample) 
+              ds_2_idx = seq(1,dim(ar)[2], by = downsample) 
+              ar = ar[ds_1_idx,ds_2_idx,]
+            }
             rasterImage(
               aperm(ar, c(2, 1, 3)) ,
               xleft = xlim[1],
@@ -744,6 +739,7 @@ plot.cube  <-
         
       }
       else {
+        # non-RGB plot
         for (b in vars) {
           #ncdf4::ncvar_get(f, b, start=c(t,1,1), count = c(1, f$dim[[2]]$len,f$dim[[3]]$len))
           dat <- ncdf4::ncvar_get(f, b, raw_datavals = TRUE)
@@ -761,11 +757,20 @@ plot.cube  <-
           for (ti in 1:size[2]) {
             #image(aperm(dat[,,t], 2:1))
             if (length(dim(dat)) == 2) {
-              # add asp?
+              ar = dat[, size[3]:1]
+              dimsx_new = dimsx
+              dimsy_new = dimsy
+              if (downsample > 1) {
+                ds_1_idx = seq(1,dim(ar)[1], by = downsample) 
+                ds_2_idx = seq(1,dim(ar)[2], by = downsample) 
+                dimsx_new = dimsx[ds_1_idx]
+                dimsy_new = dimsy[ds_2_idx]
+                ar = ar[ds_1_idx,ds_2_idx]
+              }
               image.default(
-                dimsx,
-                dimsy,
-                dat[, size[3]:1],
+                dimsx_new,
+                dimsy_new,
+                ar,
                 col = col,
                 asp = asp,
                 xaxt = xaxt,
@@ -773,16 +778,26 @@ plot.cube  <-
                 breaks = breaks,
                 xlim = xlim,
                 ylim = ylim,
+                useRaster = dev.capabilities("rasterImage")$rasterImage == "yes",
                 ...
               )
               title(paste(b, " | ",  dtvalues[ti], sep = ""))
             }
             else {
-              # add asp?
+              ar =  dat[, size[3]:1, t[ti]]
+              dimsx_new = dimsx
+              dimsy_new = dimsy
+              if (downsample > 1) {
+                ds_1_idx = seq(1,dim(ar)[1], by = downsample) 
+                ds_2_idx = seq(1,dim(ar)[2], by = downsample) 
+                dimsx_new = dimsx[ds_1_idx]
+                dimsy_new = dimsy[ds_2_idx]
+                ar = ar[ds_1_idx,ds_2_idx]
+              }
               image.default(
-                dimsx,
-                dimsy,
-                dat[, size[3]:1, t[ti]],
+                dimsx_new,
+                dimsy_new,
+                ar,
                 col = col,
                 asp = asp,
                 xaxt = xaxt,
@@ -790,6 +805,7 @@ plot.cube  <-
                 breaks = breaks,
                 xlim = xlim,
                 ylim = ylim,
+                useRaster = dev.capabilities("rasterImage")$rasterImage == "yes",
                 ...
               )
               title(paste(b, " | ",  dtvalues[ti], sep = ""))
@@ -886,9 +902,5 @@ plot.cube  <-
         box()
         axis(key.pos, at = pretty(range(breaks)))
       }
-      
-      
-      layout(matrix(1))
-      par(def.par)  # reset to default
     }
   }

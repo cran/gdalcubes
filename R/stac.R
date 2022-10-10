@@ -11,8 +11,9 @@
 #' @param out_file optional name of the output SQLite database file, defaults to a temporary file
 #' @param property_filter optional function to filter STAC items (images) by their properties; see Details
 #' @param skip_image_metadata logical, if TRUE per-image metadata (STAC item properties) will not be added to the image collection
+#' @param srs character spatial reference system of images used either for images without corresponding STAC property ony or for all images
+#' @param srs_overwrite logical, if FALSE, use srs only for images with unknown srs (missing STAC metadata)
 #' @note Currently, bbox results are expected to be WGS84 coordinates, even if bbox-crs is given in the STAC response.
-#' @note This function is experimental.
 #' @details 
 #' 
 #' The property_filter argument can be used to filter images by metadata such as cloud coverage. 
@@ -23,8 +24,9 @@
 #' @export
 stac_image_collection <- function(s, out_file = tempfile(fileext = ".sqlite"), 
                                   asset_names = NULL, asset_regex = NULL, 
-                                  url_fun = function(x) {paste0("/vsicurl/", x)},
-                                  property_filter = NULL, skip_image_metadata = FALSE) {
+                                  url_fun = .default_url_fun,
+                                  property_filter = NULL, skip_image_metadata = FALSE,
+                                  srs = NULL, srs_overwrite = FALSE) {
   SUBBAND_SPLIT_CHAR = ":"
   if (!is.list(s)) {
     stop ("Input must be a list")
@@ -36,6 +38,7 @@ stac_image_collection <- function(s, out_file = tempfile(fileext = ".sqlite"),
   if (file.exists(out_file)) {
     stop ("output file already exists")
   }
+  
   
   # add band metadata if available
   bands = NULL
@@ -151,13 +154,48 @@ stac_image_collection <- function(s, out_file = tempfile(fileext = ".sqlite"),
       }
     }
     if (img_has_bands) {
+    
+      
+      # fixes #60
+      if (!is.null(srs) && srs_overwrite) {
+        proj = srs
+      }
+      else {
+        proj = s[[i]]$properties$"proj:epsg"
+        if (!is.null(proj)) {
+          if (!startsWith(toupper(proj), "EPSG:")) {
+            proj = paste0("EPSG:", proj)
+          }
+        }
+        if (is.null(proj)) {
+          proj = s[[i]]$properties$"proj:wkt2"
+        }
+        if (is.null(proj)) {
+          proj = s[[i]]$properties$"proj:projjson"
+        }
+        if (is.null(proj)) {
+          if (!is.null(srs)) {
+            proj = srs
+          }
+          else {
+            warning(paste0("No projection info found in STAC item for image ", s[[i]]$id))
+            proj = "" # TODO: better ignore image
+          }
+        }
+      }
+      
+      
       images_id = c(images_id, i)
       images_name = c(images_name, s[[i]]$id)
-      images_proj =  c(images_proj, paste0("EPSG:",s[[i]]$properties$"proj:epsg"))
+      images_proj =  c(images_proj, proj)
       images_datetime = c(images_datetime, s[[i]]$properties$datetime)
       
       # BBOX
       bbox = s[[i]]$bbox
+      if (is.list(bbox)) {
+        bbox = unlist(bbox)
+      }
+      
       # TO CHECK IN STAC SPEC, does BBOX always exist? Is it always WGS84? 
       # TODO: transform, if bbox-crs is given
       
@@ -215,4 +253,31 @@ stac_image_collection <- function(s, out_file = tempfile(fileext = ".sqlite"),
   }
   return(image_collection(out_file))
 }
+
+
+
+
+
+
+#' Default function to convert hrefs of STAC response aassets to GDAL dataset identifiers including VSI prefixes 
+#' @param url a single URL
+#' @examples 
+#' .default_url_fun("s3://bucket/object/image.tif")
+#' @noRd
+.default_url_fun <- function(url) {
+  
+  if (startsWith(url, "s3://")) {
+    return(paste0("/vsis3/", substr(url, 6, nchar(url))))
+  }
+  else if (startsWith(url, "gs://")) {
+    return(paste0("/vsigs/", substr(url, 6, nchar(url))))
+  }
+  else if (startsWith(url, "http")) {
+    return(paste0("/vsicurl/", url))
+  }
+  
+  # default: try vsicurl
+  return(paste0("/vsicurl/", url))
+}
+
 

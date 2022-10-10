@@ -12,7 +12,7 @@
 #' if (!file.exists(file.path(tempdir(), "L8.db"))) {
 #'   L8_files <- list.files(system.file("L8NY18", package = "gdalcubes"),
 #'                          ".TIF", recursive = TRUE, full.names = TRUE)
-#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db")) 
+#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"), quiet = TRUE) 
 #' }
 #' 
 #' L8.col = image_collection(file.path(tempdir(), "L8.db"))
@@ -46,7 +46,7 @@ reduce_time <- function(x, ...) {
 #' if (!file.exists(file.path(tempdir(), "L8.db"))) {
 #'   L8_files <- list.files(system.file("L8NY18", package = "gdalcubes"),
 #'                          ".TIF", recursive = TRUE, full.names = TRUE)
-#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db")) 
+#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"), quiet = TRUE) 
 #' }
 #' 
 #' L8.col = image_collection(file.path(tempdir(), "L8.db"))
@@ -86,7 +86,7 @@ reduce_space <- function(x, ...) {
 #' if (!file.exists(file.path(tempdir(), "L8.db"))) {
 #'   L8_files <- list.files(system.file("L8NY18", package = "gdalcubes"),
 #'                          ".TIF", recursive = TRUE, full.names = TRUE)
-#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db")) 
+#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"), quiet = TRUE) 
 #' }
 #' 
 #' L8.col = image_collection(file.path(tempdir(), "L8.db"))
@@ -223,7 +223,7 @@ reduce_time.cube <- function(x, expr, ..., FUN, names=NULL) {
 #' if (!file.exists(file.path(tempdir(), "L8.db"))) {
 #'   L8_files <- list.files(system.file("L8NY18", package = "gdalcubes"),
 #'                          ".TIF", recursive = TRUE, full.names = TRUE)
-#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db")) 
+#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"), quiet = TRUE) 
 #' }
 #' 
 #' L8.col = image_collection(file.path(tempdir(), "L8.db"))
@@ -235,7 +235,7 @@ reduce_time.cube <- function(x, expr, ..., FUN, names=NULL) {
 #' L8.b02.median = reduce_space(L8.b02, "median(B02)")  
 #' L8.b02.median
 #' \donttest{
-#' plot(L8.b02.median, key.pos=1)
+#' plot(L8.b02.median)
 #' }
 #' 
 #' @note This function returns a proxy object, i.e., it will not start any computations besides deriving the shape of the result.

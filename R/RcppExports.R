@@ -77,8 +77,8 @@ gc_create_image_collection_from_format <- function(files, format_file, outfile, 
     invisible(.Call('_gdalcubes_gc_create_image_collection_from_format', PACKAGE = 'gdalcubes', files, format_file, outfile, unroll_archives))
 }
 
-gc_create_image_collection_from_datetime <- function(outfile, files, date_time, use_subdatasets, band_names) {
-    invisible(.Call('_gdalcubes_gc_create_image_collection_from_datetime', PACKAGE = 'gdalcubes', outfile, files, date_time, use_subdatasets, band_names))
+gc_create_image_collection_from_datetime <- function(outfile, files, date_time, use_subdatasets, band_names, one_band_per_file) {
+    invisible(.Call('_gdalcubes_gc_create_image_collection_from_datetime', PACKAGE = 'gdalcubes', outfile, files, date_time, use_subdatasets, band_names, one_band_per_file))
 }
 
 gc_add_images <- function(pin, files, unroll_archives = TRUE, outfile = "") {
@@ -211,6 +211,10 @@ gc_create_fill_time_cube <- function(pin, method) {
 
 gc_create_aggregate_time_cube <- function(pin, dt, method, fact = 0L) {
     .Call('_gdalcubes_gc_create_aggregate_time_cube', PACKAGE = 'gdalcubes', pin, dt, method, fact)
+}
+
+gc_create_aggregate_space_cube <- function(pin, dx, dy, method, fact = 0L) {
+    .Call('_gdalcubes_gc_create_aggregate_space_cube', PACKAGE = 'gdalcubes', pin, dx, dy, method, fact)
 }
 
 gc_create_slice_time_cube <- function(pin, dt, it = 0L) {

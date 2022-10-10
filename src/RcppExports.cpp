@@ -216,8 +216,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // gc_create_image_collection_from_datetime
-void gc_create_image_collection_from_datetime(std::string outfile, std::vector<std::string> files, std::vector<std::string> date_time, bool use_subdatasets, std::vector<std::string> band_names);
-RcppExport SEXP _gdalcubes_gc_create_image_collection_from_datetime(SEXP outfileSEXP, SEXP filesSEXP, SEXP date_timeSEXP, SEXP use_subdatasetsSEXP, SEXP band_namesSEXP) {
+void gc_create_image_collection_from_datetime(std::string outfile, std::vector<std::string> files, std::vector<std::string> date_time, bool use_subdatasets, std::vector<std::string> band_names, bool one_band_per_file);
+RcppExport SEXP _gdalcubes_gc_create_image_collection_from_datetime(SEXP outfileSEXP, SEXP filesSEXP, SEXP date_timeSEXP, SEXP use_subdatasetsSEXP, SEXP band_namesSEXP, SEXP one_band_per_fileSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type outfile(outfileSEXP);
@@ -225,7 +225,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::vector<std::string> >::type date_time(date_timeSEXP);
     Rcpp::traits::input_parameter< bool >::type use_subdatasets(use_subdatasetsSEXP);
     Rcpp::traits::input_parameter< std::vector<std::string> >::type band_names(band_namesSEXP);
-    gc_create_image_collection_from_datetime(outfile, files, date_time, use_subdatasets, band_names);
+    Rcpp::traits::input_parameter< bool >::type one_band_per_file(one_band_per_fileSEXP);
+    gc_create_image_collection_from_datetime(outfile, files, date_time, use_subdatasets, band_names, one_band_per_file);
     return R_NilValue;
 END_RCPP
 }
@@ -660,6 +661,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// gc_create_aggregate_space_cube
+SEXP gc_create_aggregate_space_cube(SEXP pin, double dx, double dy, std::string method, uint32_t fact);
+RcppExport SEXP _gdalcubes_gc_create_aggregate_space_cube(SEXP pinSEXP, SEXP dxSEXP, SEXP dySEXP, SEXP methodSEXP, SEXP factSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type pin(pinSEXP);
+    Rcpp::traits::input_parameter< double >::type dx(dxSEXP);
+    Rcpp::traits::input_parameter< double >::type dy(dySEXP);
+    Rcpp::traits::input_parameter< std::string >::type method(methodSEXP);
+    Rcpp::traits::input_parameter< uint32_t >::type fact(factSEXP);
+    rcpp_result_gen = Rcpp::wrap(gc_create_aggregate_space_cube(pin, dx, dy, method, fact));
+    return rcpp_result_gen;
+END_RCPP
+}
 // gc_create_slice_time_cube
 SEXP gc_create_slice_time_cube(SEXP pin, std::string dt, int32_t it);
 RcppExport SEXP _gdalcubes_gc_create_slice_time_cube(SEXP pinSEXP, SEXP dtSEXP, SEXP itSEXP) {
@@ -818,7 +834,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalcubes_gc_image_collection_info", (DL_FUNC) &_gdalcubes_gc_image_collection_info, 1},
     {"_gdalcubes_gc_image_collection_extent", (DL_FUNC) &_gdalcubes_gc_image_collection_extent, 2},
     {"_gdalcubes_gc_create_image_collection_from_format", (DL_FUNC) &_gdalcubes_gc_create_image_collection_from_format, 4},
-    {"_gdalcubes_gc_create_image_collection_from_datetime", (DL_FUNC) &_gdalcubes_gc_create_image_collection_from_datetime, 5},
+    {"_gdalcubes_gc_create_image_collection_from_datetime", (DL_FUNC) &_gdalcubes_gc_create_image_collection_from_datetime, 6},
     {"_gdalcubes_gc_add_images", (DL_FUNC) &_gdalcubes_gc_add_images, 4},
     {"_gdalcubes_gc_list_collection_formats", (DL_FUNC) &_gdalcubes_gc_list_collection_formats, 0},
     {"_gdalcubes_gc_create_view", (DL_FUNC) &_gdalcubes_gc_create_view, 1},
@@ -852,6 +868,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalcubes_gc_create_simple_cube", (DL_FUNC) &_gdalcubes_gc_create_simple_cube, 7},
     {"_gdalcubes_gc_create_fill_time_cube", (DL_FUNC) &_gdalcubes_gc_create_fill_time_cube, 2},
     {"_gdalcubes_gc_create_aggregate_time_cube", (DL_FUNC) &_gdalcubes_gc_create_aggregate_time_cube, 4},
+    {"_gdalcubes_gc_create_aggregate_space_cube", (DL_FUNC) &_gdalcubes_gc_create_aggregate_space_cube, 5},
     {"_gdalcubes_gc_create_slice_time_cube", (DL_FUNC) &_gdalcubes_gc_create_slice_time_cube, 3},
     {"_gdalcubes_gc_create_slice_space_cube", (DL_FUNC) &_gdalcubes_gc_create_slice_space_cube, 3},
     {"_gdalcubes_gc_create_crop_cube", (DL_FUNC) &_gdalcubes_gc_create_crop_cube, 4},

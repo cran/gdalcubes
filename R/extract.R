@@ -12,13 +12,16 @@
 #' @param FUN optional function to compute per feature summary statistics
 #' @param ... additional arguments passed to \code{FUN}
 #' @param reduce_time logical; if TRUE, time is ignored when \code{FUN} is applied
-#' @return A data.frame with columns FID, time, and data cube bands / variables 
+#' @return A data.frame with columns FID, time, and data cube bands / variables, see Details 
 #' @details 
 #' The geometry in \code{sf} can be of any simple feature type supported by GDAL, including 
 #' POINTS, LINES, POLYGONS, MULTI*, and more. If no time information is provided
 #' in one of the arguments \code{datetime} or \code{time_column}, the full time series
 #' of pixels with regard to the features are returned. 
 #' 
+#' Notice that feature identifiers in the \code{FID} column typically correspond to the row names / numbers 
+#' of the provided sf object. This can be used to combine the output with the original geometries, e.g., using \code{\link[base:merge]{merge()}}.
+#'  
 #' Pixels with missing values are automatically dropped from the result. It is hence not
 #' guaranteed that the result will contain rows for all input features.
 #'
@@ -34,7 +37,7 @@
 #' if (!file.exists(file.path(tempdir(), "L8.db"))) {
 #'   L8_files <- list.files(system.file("L8NY18", package = "gdalcubes"),
 #'                          ".TIF", recursive = TRUE, full.names = TRUE)
-#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"))
+#'   create_image_collection(L8_files, "L8_L1TP", file.path(tempdir(), "L8.db"), quiet = TRUE)
 #' }
 #' L8.col = image_collection(file.path(tempdir(), "L8.db"))
 #' v = cube_view(srs="EPSG:32618", dy=1000, dx=1000, dt="P1M",

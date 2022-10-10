@@ -4,10 +4,10 @@
   "pattern" : ".*\\.hdf.*",
   "subdatasets" : true,
   "images" : {
-    "pattern" : "HDF4_EOS:EOS_GRID:\"(.+)\\.hdf.*"
+    "pattern" : "HDF4_EOS:EOS_GRID:.*(M[OY]D13Q1\\.A.+)\\.hdf.*"
   },
   "datetime" : {
-    "pattern" : ".*M[OY]D13Q1\\.A(.{7})[^/]*",
+    "pattern" : ".*M[OY]D13Q1\\.A([0-9]{7})\\..*",
     "format" : "%Y%j"
   },
   "bands" : {
