@@ -1,7 +1,7 @@
 Package: gdalcubes
 Title: Earth Observation Data Cubes from Satellite Image Collections
-Version: 0.6.3
-Date: 2023-01-19
+Version: 0.6.4
+Date: 2023-04-14
 Authors@R: c(
     person(given = "Marius",
            family = "Appel",
@@ -52,19 +52,18 @@ Description: Processing collections of Earth observation images as on-demand mul
 Depends: R (>= 3.4)
 Imports: Rcpp, jsonlite, ncdf4
 License: MIT + file LICENSE
-URL: https://github.com/appelmar/gdalcubes_R
-BugReports: https://github.com/appelmar/gdalcubes_R/issues/
+URL: https://github.com/appelmar/gdalcubes
+BugReports: https://github.com/appelmar/gdalcubes/issues/
 Encoding: UTF-8
 RoxygenNote: 7.2.2
-LinkingTo: Rcpp
+LinkingTo: Rcpp, BH
 Suggests: knitr, magrittr, rmarkdown, stars, av, gifski, sf, tinytest,
         lubridate
 VignetteBuilder: knitr
 Copyright: file inst/COPYRIGHTS
 NeedsCompilation: yes
-SystemRequirements: C++11, GDAL (>= 2.0.1), PROJ (>= 4.8.0), netcdf,
-        sqlite3
-Packaged: 2023-01-18 13:19:55 UTC; marius
+SystemRequirements: GDAL (>= 2.0.1), PROJ (>= 4.8.0), netcdf, sqlite3
+Packaged: 2023-04-14 09:12:24 UTC; marius
 Author: Marius Appel [aut, cre] (<https://orcid.org/0000-0001-5281-3896>),
   Edzer Pebesma [ctb] (<https://orcid.org/0000-0001-8049-7069>),
   Roger Bivand [ctb],
@@ -79,4 +78,4 @@ Author: Marius Appel [aut, cre] (<https://orcid.org/0000-0001-5281-3896>),
   Dropbox, Inc. [cph]
 Maintainer: Marius Appel <marius.appel@uni-muenster.de>
 Repository: CRAN
-Date/Publication: 2023-01-19 11:30:03 UTC
+Date/Publication: 2023-04-14 11:50:05 UTC

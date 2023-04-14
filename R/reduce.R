@@ -119,7 +119,8 @@ reduce_space <- function(x, ...) {
 #' The function can either apply a built-in reducer if expr is given, or apply a custom R reducer function if FUN is provided.
 #' 
 #' In the former case, notice that expressions have a very simple format: the reducer is followed by the name of a band in parantheses. You cannot add
-#' more complex functions or arguments. Possible reducers currently are "min", "max", "sum", "prod", "count", "mean", "median", "var", "sd", "which_min", and "which_max".
+#' more complex functions or arguments. Possible reducers currently are "min", "max", "sum", "prod", "count", "mean", "median", "var", "sd", "which_min", "which_max",
+#' "Q1" (1st quartile), and "Q3" (3rd quartile).
 #' 
 #' User-defined R reducer functions receive a two-dimensional array as input where rows correspond to the band and columns represent the time dimension. For 
 #' example, one row is the time series of a specific band. FUN should always return a numeric vector with the same number of elements, which will be interpreted
@@ -192,7 +193,10 @@ reduce_time.cube <- function(x, expr, ..., FUN, names=NULL) {
     srcfile2 =  file.path(tempdir(), paste(".stream_", funhash, ".R", sep=""))
     srcfile2 = gsub("\\\\", "/", srcfile2) # Windows fix
     
-    cat("require(gdalcubes)", "\n", file = srcfile2, append = FALSE)
+    # support custom library paths
+    cat(paste0(".libPaths(",  paste(deparse(.libPaths()),collapse=""), ")\n"), file = srcfile2, append = FALSE) 
+
+    cat("require(gdalcubes)", "\n", file = srcfile2, append = TRUE)
     cat(paste("assign(\"f\", eval(parse(\"", srcfile1, "\")))", sep=""), "\n", file = srcfile2, append = TRUE)
     cat("write_chunk_from_array(reduce_time(read_chunk_as_array(), f))", "\n", file = srcfile2, append = TRUE)
     cmd <- paste(file.path(R.home("bin"),"Rscript"), " --vanilla ", srcfile2, sep="")
@@ -307,8 +311,11 @@ reduce_space.cube <- function(x, expr, ..., FUN, names=NULL) {
     cat(funstr,  file = srcfile1, append = FALSE)
     srcfile2 =  file.path(tempdir(), paste(".stream_", funhash, ".R", sep=""))
     srcfile2 = gsub("\\\\", "/", srcfile2) # Windows fix
+
+    # support custom library paths
+    cat(paste0(".libPaths(",  paste(deparse(.libPaths()),collapse=""), ")\n"), file = srcfile2, append = FALSE) 
     
-    cat("require(gdalcubes)", "\n", file = srcfile2, append = FALSE)
+    cat("require(gdalcubes)", "\n", file = srcfile2, append = TRUE)
     cat(paste("assign(\"f\", eval(parse(\"", srcfile1, "\")))", sep=""), "\n", file = srcfile2, append = TRUE)
     cat("write_chunk_from_array(reduce_space(read_chunk_as_array(), f))", "\n", file = srcfile2, append = TRUE)
     cmd <- paste(file.path(R.home("bin"),"Rscript"), " --vanilla ", srcfile2, sep="")
