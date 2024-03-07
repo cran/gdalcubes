@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2019 Marius Appel <marius.appel@uni-muenster.de>
+    Copyright (c) 2019 Marius Appel <marius.appel@hs-bochum.de>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +58,7 @@
 #include "stream_reduce_space.h"
 #include "stream_reduce_time.h"
 #include "utils.h"
-#include "vector_queries.h"
+#include "window_space.h"
 #include "window_time.h"
 
 #ifndef GDALCUBES_NO_SWARM

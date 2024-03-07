@@ -1,7 +1,7 @@
 /*
  MIT License
 
- Copyright (c) 2019 Marius Appel <marius.appel@uni-muenster.de>
+ Copyright (c) 2019 Marius Appel <marius.appel@hs-bochum.de>
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -37,8 +37,9 @@ std::shared_ptr<chunk_data> apply_pixel_cube::read_chunk(chunkid_t id) {
         return std::make_shared<chunk_data>();  // chunk is outside of the view, we don't need to read anything.
 
     std::shared_ptr<chunk_data> out = std::make_shared<chunk_data>();
-
     std::shared_ptr<chunk_data> in = _in_cube->read_chunk(id);
+
+    out->set_status(in->status());  // propagate chunk status
     if (in->empty()) {
         return out;
     }

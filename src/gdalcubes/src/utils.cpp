@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2019 Marius Appel <marius.appel@uni-muenster.de>
+    Copyright (c) 2019 Marius Appel <marius.appel@hs-bochum.de>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -159,6 +159,16 @@ void utils::env::unset_all() {
 #endif
     }
     _vars.clear();
+}
+
+
+std::string utils::env::get(std::string var_name, std::string default_value) {
+    std::string out = default_value;
+    char* r = getenv(var_name.c_str());
+    if (r) {
+        out = r;
+    }
+    return out;
 }
 
 std::string utils::env::to_string() {

@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2022 Marius Appel <marius.appel@uni-muenster.de>
+    Copyright (c) 2022 Marius Appel <marius.appel@hs-bochum.de>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -381,6 +381,15 @@ std::shared_ptr<chunk_data> aggregate_space_cube::read_chunk(chunkid_t id) {
         for (uint32_t ch_x = in_ccords_from[2]; ch_x <= in_ccords_to[2]; ++ch_x) {
             chunkid_t input_chunk_id = _in_cube->chunk_id_from_coords({ccoords[0], ch_y, ch_x});
             std::shared_ptr<chunk_data> in_chunk = _in_cube->read_chunk(input_chunk_id);
+
+            // propagate chunk status
+            if (in_chunk->status() == chunk_data::chunk_status::ERROR) {
+                out->set_status(chunk_data::chunk_status::ERROR);
+            }
+            else if (in_chunk->status() == chunk_data::chunk_status::INCOMPLETE && out->status() != chunk_data::chunk_status::ERROR) {
+                out->set_status(chunk_data::chunk_status::INCOMPLETE);
+            }
+
 
             if (in_chunk->empty()) {
                 continue;

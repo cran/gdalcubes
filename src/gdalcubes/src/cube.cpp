@@ -1,7 +1,7 @@
 /*
  MIT License
 
-Copyright (c) 2019 Marius Appel <marius.appel@uni-muenster.de>
+Copyright (c) 2019 Marius Appel <marius.appel@hs-bochum.de>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 #include "cube.h"
+#include "view.h"
 
 #include <gdal_utils.h>  // for GDAL translate
 #include <netcdf.h>
@@ -45,73 +46,248 @@ SOFTWARE.
 
 namespace gdalcubes {
 
-void cube::write_chunks_gtiff(std::string dir, std::shared_ptr<chunk_processor> p) {
-    if (!filesystem::exists(dir)) {
-        filesystem::mkdir_recursive(dir);
-    }
 
-    if (!filesystem::is_directory(dir)) {
-        throw std::string("ERROR in cube::write_chunks_gtiff(): output is not a directory.");
-    }
 
-    GDALDriver *gtiff_driver = (GDALDriver *)GDALGetDriverByName("GTiff");
-    if (gtiff_driver == NULL) {
-        throw std::string("ERROR: cannot find GDAL driver for GTiff.");
-    }
 
-    if (!_st_ref->has_regular_space()) {
-        throw std::string("ERROR: GeoTIFF export currently does not support irregular spatial dimensions");
-    }
-
-    // NOTE: the following will only work as long as all cube st reference types with regular spatial dimensions inherit from  cube_stref_regular class
-    std::shared_ptr<cube_stref_regular> stref = std::dynamic_pointer_cast<cube_stref_regular>(_st_ref);
-
-    std::shared_ptr<progress> prg = config::instance()->get_default_progress_bar()->get();
-    prg->set(0);  // explicitly set to zero to show progress bar immediately
-
-    std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex &)> f = [this, dir, prg, gtiff_driver, stref](chunkid_t id, std::shared_ptr<chunk_data> dat, std::mutex &m) {
-        bounds_st cextent = this->bounds_from_chunk(id);  // implemented in derived classes
-        double affine[6];
-        affine[0] = cextent.s.left;
-        affine[3] = cextent.s.top;
-        affine[1] = stref->dx();
-        affine[5] = -stref->dy();
-        affine[2] = 0.0;
-        affine[4] = 0.0;
-
-        CPLStringList out_co;
-        //out_co.AddNameValue("TILED", "YES");
-        //out_co.AddNameValue("BLOCKXSIZE", "256");
-        // out_co.AddNameValue("BLOCKYSIZE", "256");
-
-        for (uint16_t ib = 0; ib < dat->count_bands(); ++ib) {
-            for (uint32_t it = 0; it < dat->size()[1]; ++it) {
-                std::string out_file = filesystem::join(dir, (std::to_string(id) + "_" + std::to_string(ib) + "_" + std::to_string(it) + ".tif"));
-
-                GDALDataset *gdal_out = gtiff_driver->Create(out_file.c_str(), dat->size()[3], dat->size()[2], 1, GDT_Float64, out_co.List());
-                CPLErr res = gdal_out->GetRasterBand(1)->RasterIO(GF_Write, 0, 0, dat->size()[3], dat->size()[2], ((double *)dat->buf()) + (ib * dat->size()[1] * dat->size()[2] * dat->size()[3] + it * dat->size()[2] * dat->size()[3]), dat->size()[3], dat->size()[2], GDT_Float64, 0, 0, NULL);
-                if (res != CE_None) {
-                    GCBS_WARN("RasterIO (write) failed for band " + _bands.get(ib).name);
-                }
-                gdal_out->GetRasterBand(1)->SetNoDataValue(std::stod(_bands.get(ib).no_data_value));
-                char *wkt_out;
-                OGRSpatialReference srs_out;
-                srs_out.SetFromUserInput(_st_ref->srs().c_str());
-                srs_out.exportToWkt(&wkt_out);
-
-                GDALSetProjection(gdal_out, wkt_out);
-                GDALSetGeoTransform(gdal_out, affine);
-                CPLFree(wkt_out);
-
-                GDALClose(gdal_out);
-            }
-        }
-        prg->increment((double)1 / (double)this->count_chunks());
-    };
-
-    p->apply(shared_from_this(), f);
-    prg->finalize();
+packed_export packed_export::make_none() {
+    packed_export out;
+    out.type = packing_type::PACK_NONE;
+    return out;
 }
+
+
+packed_export packed_export::make_float32() {
+    packed_export out;
+    out.type = packing_type::PACK_FLOAT32;
+    out.scale = {1};
+    out.offset = {0};
+    out.nodata = {std::numeric_limits<int16_t>::lowest()};
+    return out;
+}
+
+packed_export packed_export::make_uint16(double scale, double offset, double nodata) {
+    packed_export out;
+    out.type = packing_type::PACK_UINT16;
+    out.scale = {scale};
+    out.offset = {offset};
+    out.nodata = {nodata};
+    return out;
+}
+
+packed_export packed_export::make_uint16(std::vector<double> scale, std::vector<double> offset, std::vector<double> nodata) {
+    packed_export out;
+    out.type = packing_type::PACK_UINT16;
+    out.scale = scale;
+    out.offset = offset;
+    out.nodata = nodata;
+    return out;
+}
+
+packed_export packed_export::make_int16(double scale, double offset) {
+    packed_export out;
+    out.type = packing_type::PACK_UINT16;
+    out.scale = {scale};
+    out.offset = {offset};
+    return out;
+}
+
+packed_export packed_export::make_int16(std::vector<double> scale, std::vector<double> offset) {
+    packed_export out;
+    out.type = packing_type::PACK_INT16;
+    out.scale = scale;
+    out.offset = offset;
+    return out;
+}
+
+packed_export packed_export::make_uint8(double scale, double offset) {
+    packed_export out;
+    out.type = packing_type::PACK_UINT16;
+    out.scale = {scale};
+    out.offset = {offset};
+    return out;
+}
+
+packed_export packed_export::make_uint8(std::vector<double> scale, std::vector<double> offset) {
+    packed_export out;
+    out.type = packing_type::PACK_UINT8;
+    out.scale = scale;
+    out.offset = offset;
+    return out;
+}
+
+
+
+
+
+bool chunk_data::all_nan() {
+    if (empty()) return true;
+    for (uint32_t i=0; i< _size[0] * _size[1] * _size[2] * _size[3]; ++i) {
+        if (!std::isnan(((double*)_buf)[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+
+
+
+
+
+
+chunkid_t cube::find_chunk_that_contains(coords_st p) const {
+    uint32_t cumprod = 1;
+    chunkid_t id = 0;
+
+    // 1. Convert map coordinates to view-based coordinates
+    coords_nd<uint32_t, 3> s = _st_ref->cube_coords(p);
+
+    // 2. Find out which chunk contains the integer view coordinates
+    id += cumprod * (s[2] / _chunk_size[2]);
+    cumprod *= (uint32_t)std::ceil(((double)_st_ref->nx()) / ((double)_chunk_size[2]));
+    id += cumprod * (s[1] / _chunk_size[1]);
+    cumprod *= (uint32_t)std::ceil(((double)(_st_ref->ny()) / ((double)_chunk_size[1])));
+    id += cumprod * (s[0] / _chunk_size[0]);
+    //cumprod *= (uint32_t)std::ceil(((double)(_c->view().nt()) / ((double)_size_t);
+
+    return id;
+}
+
+
+bounds_nd<uint32_t, 3> cube::chunk_limits(chunk_coordinate_tyx c) const {
+    cube_coordinate_tyx out_vcoords_low;
+    cube_coordinate_tyx out_vcoords_high;
+
+    out_vcoords_low[0] = c[0] * _chunk_size[0];
+    out_vcoords_low[1] = c[1] * _chunk_size[1];
+    out_vcoords_low[2] = c[2] * _chunk_size[2];
+    out_vcoords_high[0] = out_vcoords_low[0] + _chunk_size[0] - 1;
+    out_vcoords_high[1] = out_vcoords_low[1] + _chunk_size[1] - 1;
+    out_vcoords_high[2] = out_vcoords_low[2] + _chunk_size[2] - 1;
+
+    // Shrink to view
+    if (out_vcoords_high[0] >= _st_ref->nt())
+        out_vcoords_high[0] = _st_ref->nt() - 1;
+    if (out_vcoords_low[0] >= _st_ref->nt())
+        out_vcoords_low[0] = _st_ref->nt() - 1;
+
+    if (out_vcoords_high[1] >= _st_ref->ny())
+        out_vcoords_high[1] = _st_ref->ny() - 1;
+    if (out_vcoords_low[1] >= _st_ref->ny())
+        out_vcoords_low[1] = _st_ref->ny() - 1;
+
+    if (out_vcoords_high[2] >= _st_ref->nx())
+        out_vcoords_high[2] = _st_ref->nx() - 1;
+    if (out_vcoords_low[2] >= _st_ref->nx())
+        out_vcoords_low[2] = _st_ref->nx() - 1;
+
+    bounds_nd<uint32_t, 3> out;
+    out.low = out_vcoords_low;
+    out.high = out_vcoords_high;
+    return out;
+}
+
+
+
+
+
+bounds_nd<uint32_t, 3> cube::chunk_limits(chunkid_t id) const {
+    coords_nd<uint32_t, 3> out_vcoords_low;
+    coords_nd<uint32_t, 3> out_vcoords_high;
+
+    // Transform to global coordinates based on chunk id
+    uint32_t cumprod = 1;
+    int32_t n;
+
+    n = (uint32_t)std::ceil(((double)(_st_ref->nx())) / ((double)_chunk_size[2]));
+    out_vcoords_low[2] = (id / cumprod) % n;
+    out_vcoords_low[2] *= _chunk_size[2];
+    out_vcoords_high[2] = out_vcoords_low[2] + _chunk_size[2] - 1;
+    cumprod *= n;
+
+    n = (uint32_t)std::ceil(((double)(_st_ref->ny())) / ((double)_chunk_size[1]));
+    out_vcoords_low[1] = (id / cumprod) % n;
+    out_vcoords_low[1] *= _chunk_size[1];
+    out_vcoords_high[1] = out_vcoords_low[1] + _chunk_size[1] - 1;
+    cumprod *= n;
+
+    n = (uint32_t)std::ceil(((double)(_st_ref->nt())) / ((double)_chunk_size[0]));
+    out_vcoords_low[0] = (id / cumprod) % n;
+    out_vcoords_low[0] *= _chunk_size[0];
+    out_vcoords_high[0] = out_vcoords_low[0] + _chunk_size[0] - 1;
+    cumprod *= n;
+
+    // Shrink to view
+    if (out_vcoords_high[0] >= _st_ref->nt())
+        out_vcoords_high[0] = _st_ref->nt() - 1;
+    if (out_vcoords_low[0] >= _st_ref->nt())
+        out_vcoords_low[0] = _st_ref->nt() - 1;
+
+    if (out_vcoords_high[1] >= _st_ref->ny())
+        out_vcoords_high[1] = _st_ref->ny() - 1;
+    if (out_vcoords_low[1] >= _st_ref->ny())
+        out_vcoords_low[1] = _st_ref->ny() - 1;
+
+    if (out_vcoords_high[2] >= _st_ref->nx())
+        out_vcoords_high[2] = _st_ref->nx() - 1;
+    if (out_vcoords_low[2] >= _st_ref->nx())
+        out_vcoords_low[2] = _st_ref->nx() - 1;
+
+    bounds_nd<uint32_t, 3> out;
+    out.low = out_vcoords_low;
+    out.high = out_vcoords_high;
+    return out;
+}
+
+
+
+
+chunk_coordinate_tyx cube::chunk_coords_from_id(chunkid_t id) {
+    chunk_coordinate_tyx out;
+
+    uint32_t cumprod = 1;
+    int32_t n;
+
+    n = count_chunks_x();
+    out[2] = (id / cumprod) % n;
+    cumprod *= n;
+    n = count_chunks_y();
+    out[1] = (id / cumprod) % n;
+    cumprod *= n;
+    n = count_chunks_t();
+    out[0] = (id / cumprod) % n;
+    cumprod *= n;
+
+    return out;
+}
+
+
+
+bounds_st cube::bounds_from_chunk(chunkid_t id) const {
+    bounds_st out_st;
+
+    bounds_nd<uint32_t, 3> vb = chunk_limits(id);
+    coords_st low = _st_ref->map_coords(vb.low);
+    vb.high[0] += 1;
+    vb.high[1] += 1;
+    vb.high[2] += 1;
+    coords_st high = _st_ref->map_coords(vb.high);
+
+    out_st.s.left = low.s.x;
+    out_st.s.right = high.s.x;
+    out_st.s.bottom = high.s.y; // Important: high has lower y coordinates (because integer cube coordinates go top -> bottom)
+    out_st.s.top = low.s.y; // Important: low has higher y coordinates (because integer cube coordinates go top -> bottom)
+    out_st.t0 = low.t;
+    out_st.t1 = high.t;
+
+    return out_st;
+}
+
+
+
+
+
 
 void cube::write_tif_collection(std::string dir, std::string prefix,
                                 bool overviews, bool cog,
@@ -437,301 +613,6 @@ void cube::write_tif_collection(std::string dir, std::string prefix,
     prg->finalize();
 }
 
-void cube::write_png_collection(std::string dir, std::string prefix, std::vector<std::string> bands, std::vector<double> zlim_min,
-                                std::vector<double> zlim_max, double gamma, std::vector<uint8_t> na_color, bool na_transparent,
-                                std::map<std::string, std::string> creation_options, bool drop_empty_slices, std::shared_ptr<chunk_processor> p) {
-    if (zlim_min.empty()) {
-        zlim_min = {0};
-    }
-    if (zlim_max.empty()) {
-        zlim_max = {255};
-    }
-
-    if (size_bands() > 1 && bands.empty()) {
-        if (size_bands() == 3) {
-            bands.push_back(_bands.get(0).name);
-            bands.push_back(_bands.get(1).name);
-            bands.push_back(_bands.get(2).name);
-            if (zlim_min.size() == 1) {
-                zlim_min.push_back(zlim_min[0]);
-                zlim_min.push_back(zlim_min[0]);
-            }
-            if (zlim_max.size() == 1) {
-                zlim_max.push_back(zlim_max[0]);
-                zlim_max.push_back(zlim_max[0]);
-            }
-            GCBS_WARN("Input data cube has three bands, using as (R,G,B) = (" + _bands.get(0).name + "," + _bands.get(1).name + "," + _bands.get(2).name + ")");
-        } else {
-            GCBS_WARN("Input data cube has more than one band, using " + _bands.get(0).name + " to produce a grayscale image");
-            bands.push_back(_bands.get(0).name);
-        }
-    }
-    if (bands.size() != 1 && bands.size() != 3) {
-        throw std::string("ERROR in cube::write_png_collection(): either one (grayscale) or three (RGB) bands expected, got " + std::to_string(bands.size()));
-    }
-    assert(bands.size() == 1 || bands.size() == 3);
-
-    bool grayscale_as_rgb = false;
-    if (na_transparent) {
-        na_color.clear();
-    } else {
-        if (!(na_color.empty() || na_color.size() == 1 || na_color.size() == 3)) {
-            throw std::string("ERROR in cube::write_png_collection(): either one (grayscale) or three (RGB) values expected for na_color, got " + std::to_string(na_color.size()));
-        }
-        if (na_color.size() == 3 && bands.size() == 1) {
-            grayscale_as_rgb = true;
-            bands.push_back(bands[0]);
-            bands.push_back(bands[0]);
-            if (zlim_min.size() == 1) {
-                zlim_min.push_back(zlim_min[0]);
-                zlim_min.push_back(zlim_min[0]);
-            }
-            if (zlim_max.size() == 1) {
-                zlim_max.push_back(zlim_max[0]);
-                zlim_max.push_back(zlim_max[0]);
-            }
-        } else if (na_color.size() == 1 && bands.size() == 3) {
-            na_color.clear();
-            GCBS_WARN("Expected three (RGB) no data color; no data color will be ignored");
-        }
-    }
-    assert(zlim_min.size() == bands.size());
-    assert(zlim_max.size() == bands.size());
-
-    GDALDriver *png_driver = (GDALDriver *)GDALGetDriverByName("PNG");
-    if (png_driver == NULL) {
-        throw std::string("ERROR: cannot find GDAL driver for PNG.");
-    }
-    //    GDALDriver *mem_driver = (GDALDriver *)GDALGetDriverByName("MEM");
-    //    if (png_driver == NULL) {
-    //        throw std::string("ERROR: cannot find GDAL driver for MEM.");
-    //    }
-    GDALDriver *gtiff_driver = (GDALDriver *)GDALGetDriverByName("GTiff");
-    if (png_driver == NULL) {
-        throw std::string("ERROR: cannot find GDAL driver for GTiff.");
-    }
-
-    if (!filesystem::exists(dir)) {
-        filesystem::mkdir_recursive(dir);
-    }
-    if (!filesystem::is_directory(dir)) {
-        throw std::string("ERROR in cube::write_png_collection(): invalid output directory.");
-    }
-
-    std::shared_ptr<progress> prg = config::instance()->get_default_progress_bar()->get();
-    prg->set(0);  // explicitly set to zero to show progress bar immediately
-
-    CPLStringList out_co;
-    for (auto it = creation_options.begin(); it != creation_options.end(); ++it) {
-        std::string key = it->first;
-        std::transform(key.begin(), key.end(), key.begin(), (int (*)(int))std::toupper);
-        out_co.AddNameValue(it->first.c_str(), it->second.c_str());
-    }
-
-    std::vector<uint16_t> band_nums;
-    for (uint16_t i = 0; i < bands.size(); ++i) {
-        if (!_bands.has(bands[i])) {
-            throw std::string("Data cube has no band with name '" + bands[i] + "'");
-        }
-        band_nums.push_back(_bands.get_index(bands[i]));
-    }
-    uint8_t nbands = band_nums.size();
-    int add_alpha = na_transparent ? 1 : 0;
-
-    /*  GTiff out */
-    // avoid parallel RasterIO calls writing to the same file
-    std::map<uint32_t, std::mutex> mtx;  // time_slice_index -> mutex
-
-    CPLStringList out_co_gtiff;
-    out_co_gtiff.AddNameValue("TILED", "YES");
-    out_co_gtiff.AddNameValue("BLOCKXSIZE", std::to_string(chunk_size()[2]).c_str());
-    out_co_gtiff.AddNameValue("BLOCKYSIZE", std::to_string(chunk_size()[1]).c_str());
-
-    std::string tempdir = filesystem::join(filesystem::get_tempdir(), utils::generate_unique_filename());
-    filesystem::mkdir_recursive(tempdir);
-
-    // create all temporary tif datasets
-    for (uint32_t it = 0; it < size_t(); ++it) {
-        std::string name = filesystem::join(tempdir, std::to_string(it) + ".tif");
-
-        GDALDataset *gdal_out = gtiff_driver->Create(name.c_str(), size_x(), size_y(), nbands + add_alpha, GDT_Byte, out_co.List());
-        char *wkt_out;
-        OGRSpatialReference srs_out;
-        srs_out.SetFromUserInput(_st_ref->srs().c_str());
-        srs_out.exportToWkt(&wkt_out);
-        GDALSetProjection(gdal_out, wkt_out);
-
-        double affine[6];
-        affine[0] = st_reference()->left();
-        affine[3] = st_reference()->top();
-        affine[1] = _st_ref->dx();
-        affine[5] = -_st_ref->dy();
-        affine[2] = 0.0;
-        affine[4] = 0.0;
-        GDALSetGeoTransform(gdal_out, affine);
-        CPLFree(wkt_out);
-
-        if (nbands == 1) {
-            gdal_out->GetRasterBand(1)->SetColorInterpretation(GCI_GrayIndex);
-        } else {
-            gdal_out->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
-            gdal_out->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
-            gdal_out->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
-        }
-        if (add_alpha == 1) {
-            gdal_out->GetRasterBand(nbands + 1)->SetColorInterpretation(GCI_AlphaBand);
-        }
-
-        //                    gdal_out->GetRasterBand(ib + 1)->SetNoDataValue(packing.nodata[0]);
-        //                    gdal_out->GetRasterBand(ib + 1)->SetOffset(packing.offset[0]);
-        //                    gdal_out->GetRasterBand(ib + 1)->SetScale(packing.scale[0]);
-        //                    gdal_out->GetRasterBand(ib + 1)->Fill(packing.nodata[0]);
-
-        GDALClose((GDALDatasetH)gdal_out);
-    }
-
-    std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex &)> f = [this, dir, prg, &mtx, &tempdir, &nbands, &add_alpha, &na_color, &gamma, &band_nums, &zlim_min, &zlim_max, &grayscale_as_rgb](chunkid_t id, std::shared_ptr<chunk_data> dat, std::mutex &m) {
-        if (!dat->empty()) {
-            for (uint32_t it = 0; it < dat->size()[1]; ++it) {
-                uint32_t cur_t_index = chunk_limits(id).low[0] + it;
-                std::string name = filesystem::join(tempdir, std::to_string(cur_t_index) + ".tif");
-                mtx[cur_t_index].lock();
-                GDALDataset *gdal_out = (GDALDataset *)GDALOpen(name.c_str(), GA_Update);
-                if (!gdal_out) {
-                    GCBS_WARN("GDAL failed to open " + name);
-                    mtx[cur_t_index].unlock();
-                    continue;
-                }
-
-                uint8_t *buf_mask = nullptr;
-                if (add_alpha == 1) buf_mask = (uint8_t *)std::malloc(sizeof(uint8_t) * dat->size()[2] * dat->size()[3]);
-
-                if (grayscale_as_rgb) {
-                    uint8_t *buf = (uint8_t *)std::malloc(sizeof(uint8_t) * dat->size()[2] * dat->size()[3]);
-                    for (uint16_t ib = 0; ib < nbands; ++ib) {
-                        uint16_t b = band_nums[ib];
-                        for (uint32_t i = 0; i < dat->size()[2] * dat->size()[3]; ++i) {
-                            double v = ((double *)(dat->buf()))[b * dat->size()[1] * dat->size()[2] * dat->size()[3] +
-                                                                it * dat->size()[2] * dat->size()[3] + i];
-                            if (std::isnan(v)) {
-                                if (add_alpha == 1) {
-                                    buf_mask[i] = 0;
-                                } else if (!na_color.empty()) {
-                                    v = na_color[ib];
-                                } else {
-                                    v = 0;  // TODO: require either na_color not empty or na transparent == true
-                                }
-                            } else {
-                                if (add_alpha == 1) {
-                                    buf_mask[i] = 255;
-                                }
-                                v = ((v - zlim_min[ib]) / (zlim_max[ib] - zlim_min[ib]));
-                                v = std::round(std::pow(v, gamma) * 255);
-                                v = std::min(std::max(v, 0.0), 255.0);
-                            }
-                            buf[i] = v;
-                        }
-
-                        CPLErr res = gdal_out->GetRasterBand(ib + 1)->RasterIO(GF_Write, chunk_limits(id).low[2], chunk_limits(id).low[1], dat->size()[3], dat->size()[2],
-                                                                               buf, dat->size()[3], dat->size()[2], GDT_Byte, 0, 0, NULL);
-                        if (res != CE_None) {
-                            GCBS_WARN("RasterIO (write) failed for " + name);
-                            break;
-                        }
-                    }
-                    std::free(buf);
-                } else {  // modify band values in-place
-                    for (uint16_t ib = 0; ib < nbands; ++ib) {
-                        uint16_t b = band_nums[ib];
-                        for (uint32_t i = 0; i < dat->size()[2] * dat->size()[3]; ++i) {
-                            double &v = ((double *)(dat->buf()))[b * dat->size()[1] * dat->size()[2] * dat->size()[3] +
-                                                                 it * dat->size()[2] * dat->size()[3] + i];
-                            if (std::isnan(v)) {
-                                if (add_alpha == 1) {
-                                    buf_mask[i] = 0;
-                                } else if (!na_color.empty()) {
-                                    v = na_color[ib];
-                                } else {
-                                    v = 0;  // TODO: require either na_color not empty or na transparent == true
-                                }
-                            } else {
-                                if (add_alpha == 1) {
-                                    buf_mask[i] = 255;
-                                }
-                                v = ((v - zlim_min[ib]) / (zlim_max[ib] - zlim_min[ib]));
-                                v = std::round(std::pow(v, gamma) * 255);
-                                v = std::min(std::max(v, 0.0), 255.0);
-                            }
-                        }
-
-                        CPLErr res = gdal_out->GetRasterBand(ib + 1)->RasterIO(GF_Write, chunk_limits(id).low[2], size_y() - chunk_limits(id).high[1] - 1, dat->size()[3], dat->size()[2],
-                                                                               ((double *)dat->buf()) + (b * dat->size()[1] * dat->size()[2] * dat->size()[3] + it * dat->size()[2] * dat->size()[3]),
-                                                                               dat->size()[3], dat->size()[2], GDT_Float64, 0, 0, NULL);
-                        if (res != CE_None) {
-                            GCBS_WARN("RasterIO (write) failed for " + name);
-                            break;
-                        }
-                    }
-                }
-                if (add_alpha == 1) {
-                    CPLErr res = gdal_out->GetRasterBand(nbands + 1)->RasterIO(GF_Write, chunk_limits(id).low[2], size_y() - chunk_limits(id).high[1] - 1, dat->size()[3], dat->size()[2], buf_mask, dat->size()[3], dat->size()[2], GDT_Byte, 0, 0, NULL);
-                    if (res != CE_None) {
-                        GCBS_WARN("RasterIO (write) failed for chunk " + std::string(gdal_out->GetDescription()));
-                    }
-                    std::free(buf_mask);
-                }
-                GDALClose(gdal_out);
-                mtx[cur_t_index].unlock();
-            }
-        }
-        prg->increment((double)1 / (double)this->count_chunks());
-    };
-    p->apply(shared_from_this(), f);
-
-    for (uint32_t it = 0; it < size_t(); ++it) {
-        std::string name = filesystem::join(tempdir, std::to_string(it) + ".tif");
-
-        CPLStringList translate_args;
-        translate_args.AddString("-of");
-        translate_args.AddString("PNG");
-        for (auto it = creation_options.begin(); it != creation_options.end(); ++it) {
-            translate_args.AddString("-co");
-            std::string v = it->first + "=" + it->second;
-            translate_args.AddString(v.c_str());
-        }
-
-        GDALTranslateOptions *trans_options = GDALTranslateOptionsNew(translate_args.List(), NULL);
-        if (trans_options == NULL) {
-            GCBS_WARN("Cannot create gdal_translate options.");
-            continue;
-        }
-        GDALDataset *dataset = (GDALDataset *)GDALOpen(name.c_str(), GA_ReadOnly);
-        if (!dataset) {
-            GCBS_WARN("Cannot open GDAL dataset '" + name + "'.");
-            GDALTranslateOptionsFree(trans_options);
-            continue;
-        }
-        std::string outfile = filesystem::join(dir, prefix + _st_ref->datetime_at_index(it).to_string() + ".png");
-        if (!filesystem::exists(dir)) {
-            filesystem::mkdir(dir);
-        }
-        GDALDatasetH out = GDALTranslate(outfile.c_str(), (GDALDatasetH)dataset, trans_options, NULL);
-        if (!out) {
-            GCBS_WARN("Cannot translate GDAL dataset '" + name + "'.");
-            GDALClose((GDALDatasetH)dataset);
-            GDALTranslateOptionsFree(trans_options);
-        }
-        GDALClose(out);
-        GDALTranslateOptionsFree(trans_options);
-
-        GDALClose((GDALDatasetH)dataset);
-        filesystem::remove(name);
-    }
-    filesystem::remove(tempdir);
-
-    prg->set(1.0);
-    prg->finalize();
-}
 
 void cube::write_netcdf_file(std::string path, uint8_t compression_level, bool with_VRT, bool write_bounds,
                              packed_export packing, bool drop_empty_slices, std::shared_ptr<chunk_processor> p) {
@@ -898,6 +779,11 @@ void cube::write_netcdf_file(std::string path, uint8_t compression_level, bool w
         nc_def_var(ncout, "x_bnds", NC_DOUBLE, 2, d_xbnds, &v_xbnds);
     }
 
+    int d_chunkstatus;
+    nc_def_dim(ncout, "chunks", count_chunks(), &d_chunkstatus);
+    int v_chunkstatus;
+    nc_def_var(ncout, "chunk_status", NC_INT, 1, &d_chunkstatus, &v_chunkstatus);
+
     std::string att_source = "gdalcubes " + std::to_string(GDALCUBES_VERSION_MAJOR) + "." + std::to_string(GDALCUBES_VERSION_MINOR) + "." + std::to_string(GDALCUBES_VERSION_PATCH);
 
     nc_put_att_text(ncout, NC_GLOBAL, "Conventions", std::strlen("CF-1.6"), "CF-1.6");
@@ -1001,6 +887,10 @@ void cube::write_netcdf_file(std::string path, uint8_t compression_level, bool w
 
     for (uint16_t i = 0; i < bands().count(); ++i) {
         int v;
+        if (!std::isalnum(bands().get(i).name[0])) {
+          GCBS_WARN("Invalid netCDF variable name '" + bands().get(i).name  + "'; replacing with 'X" + bands().get(i).name + "'");
+          bands().get(i).name = "X" + bands().get(i).name;
+        }
         nc_def_var(ncout, bands().get(i).name.c_str(), ot, 3, d_all, &v);
         std::size_t csize[3] = {_chunk_size[0], _chunk_size[1], _chunk_size[2]};
 #if USE_NCDF4 == 1
@@ -1069,9 +959,18 @@ void cube::write_netcdf_file(std::string path, uint8_t compression_level, bool w
         if (dim_x_bnds) std::free(dim_x_bnds);
     }
 
-    std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex &)> f = [this, op, prg, &v_bands, ncout, &packing](chunkid_t id, std::shared_ptr<chunk_data> dat, std::mutex &m) {
+    uint32_t chunk_error_count = 0;
+    std::function<void(chunkid_t, std::shared_ptr<chunk_data>, std::mutex &)> f = [this, op, prg, &v_bands, &chunk_error_count, ncout, &packing, &v_chunkstatus](chunkid_t id, std::shared_ptr<chunk_data> dat, std::mutex &m) {
 
         // TODO: check if it is OK to simply not write anything to netCDF or if we need to fill dat explicity with no data values, check also for packed output
+        int nc_chunk_status = (int)dat->status();
+        std::size_t nc_chunk_id = std::size_t(id);
+        m.lock();
+        nc_put_var1_int(ncout, v_chunkstatus, &nc_chunk_id, &nc_chunk_status);
+        if (dat->status() != chunk_data::chunk_status::OK) {
+            chunk_error_count++;
+        }
+        m.unlock();
         if (!dat->empty()) {
             chunk_size_btyx csize = dat->size();
             bounds_nd<uint32_t, 3> climits = chunk_limits(id);
@@ -1203,6 +1102,15 @@ void cube::write_netcdf_file(std::string path, uint8_t compression_level, bool w
     p->apply(shared_from_this(), f);
     nc_close(ncout);
     prg->finalize();
+
+
+
+    if(chunk_error_count > 0) {
+        std::string msg = std::to_string(chunk_error_count) + " out of " + std::to_string(count_chunks()) + " chunks have repoprted errors / incompleteness. "\
+        "This is most likely caused by failed computations and/or inaccessible image data. Please check detailed output or run with debug option again.";
+        GCBS_WARN(msg);
+    }
+
 
     // netCDF is now written, write additional per-time-slice VRT datasets if needed
 
@@ -1414,6 +1322,10 @@ void cube::write_single_chunk_netcdf(gdalcubes::chunkid_t id, std::string path, 
 
     for (uint16_t i = 0; i < bands().count(); ++i) {
         int v;
+        if (!std::isalnum(bands().get(i).name[0])) {
+          GCBS_WARN("Invalid netCDF variable name '" + bands().get(i).name  + "'; replacing with 'X" + bands().get(i).name + "'");
+          bands().get(i).name = "X" + bands().get(i).name;
+        }
         nc_def_var(ncout, bands().get(i).name.c_str(), NC_DOUBLE, 3, d_all, &v);
         std::size_t csize[3] = {_chunk_size[0], _chunk_size[1], _chunk_size[2]};
 #if USE_NCDF4 == 1
@@ -1645,6 +1557,10 @@ void cube::write_chunks_netcdf(std::string dir, std::string name, uint8_t compre
 
             for (uint16_t i = 0; i < bands().count(); ++i) {
                 int v;
+                if (!std::isalnum(bands().get(i).name[0])) {
+                  GCBS_WARN("Invalid netCDF variable name '" + bands().get(i).name  + "'; replacing with 'X" + bands().get(i).name + "'");
+                  bands().get(i).name = "X" + bands().get(i).name;
+                }
                 nc_def_var(ncout, bands().get(i).name.c_str(), NC_DOUBLE, 3, d_all, &v);
                 std::size_t csize[3] = {_chunk_size[0], _chunk_size[1], _chunk_size[2]};
 #if USE_NCDF4 == 1
@@ -1787,6 +1703,101 @@ std::shared_ptr<chunk_data> cube::to_double_array(std::shared_ptr<chunk_processo
 
 }
 
+
+
+
+std::shared_ptr<chunk_data> cube::read_window(std::array<int32_t, 3> lower, std::array<int32_t, 3> upper) {
+    // This function allows negative coordinates
+    // This funtion guarantees that the output buffer has size prod(upper - lower + 1)
+
+    if (upper[0] < lower[0] || upper[1] < lower[1] || upper[2] < lower[2]) {
+        GCBS_ERROR("ERROR in cube::read_window(): invalid window provided.");
+        throw std::string("ERROR in cube::read_window(): invalid window provided.");
+    }
+
+    std::array<int32_t, 3> chnk_min = {lower[0] / int32_t(_chunk_size[0]), lower[1] / int32_t(_chunk_size[1]), lower[2] / int32_t(_chunk_size[2])};
+    std::array<int32_t, 3> chnk_max = {upper[0] / int32_t(_chunk_size[0]), upper[1] / int32_t(_chunk_size[1]), upper[2] / int32_t(_chunk_size[2])};
+
+    std::shared_ptr<chunk_data> out = std::make_shared<chunk_data>();
+    coords_nd<int32_t, 3> size_tyx = {upper[0] - lower[0] + 1, upper[1] - lower[1] + 1, upper[2] - lower[2] + 1};
+    
+
+    coords_nd<uint32_t, 4> size_btyx = {uint32_t(_bands.count()), uint32_t(size_tyx[0]), uint32_t(size_tyx[1]), uint32_t(size_tyx[2])};
+    out->size(size_btyx);
+
+    // Fill buffers accordingly
+    out->buf(std::calloc(size_btyx[0] * size_btyx[1] * size_btyx[2] * size_btyx[3], sizeof(double)));
+    double* begin = (double*)out->buf();
+    double* end = ((double*)out->buf()) + size_btyx[0] * size_btyx[1] * size_btyx[2] * size_btyx[3];
+    std::fill(begin, end, NAN);
+
+    // Areas outside the cube are always filled with NAN. Padding must be explicitly implemented in upstram code, if needed (e.g. window_space)
+    for (int32_t ict = std::max(chnk_min[0], 0); ict<= std::min(chnk_max[0], (int32_t)count_chunks_t()-1); ++ict) {
+        for (int32_t icy = std::max(chnk_min[1], 0); icy<= std::min(chnk_max[1], (int32_t)count_chunks_y()-1); ++icy) {
+            for (int32_t icx = std::max(chnk_min[2], 0); icx<= std::min(chnk_max[2], (int32_t)count_chunks_x()-1); ++icx) {
+                
+                // 1. Read chunk
+                chunkid_t chnk_id = chunk_id_from_coords({uint32_t(ict), uint32_t(icy), uint32_t(icx)}); // casting to unsigned needed?
+                std::shared_ptr<chunk_data> cin = this->read_chunk(chnk_id);
+                if (cin->empty()) {
+                    continue;
+                }
+      
+
+                // 2. Iterate over chunk and copy values to correct position in the buffer
+
+                // Offsets: Relative position between chunk pixels and target buffer pixels
+                int32_t offst_t = lower[0] - ict * _chunk_size[0];
+                int32_t offst_y = lower[1] - icy * _chunk_size[1];
+                int32_t offst_x = lower[2] - icx * _chunk_size[2];
+
+                int32_t start_t = std::max(offst_t, 0);
+                int32_t end_t = std::min(int32_t(cin->size()[1]) - 1, offst_t + (upper[0] - lower[0]));
+                int32_t start_y = std::max(offst_y, 0);
+                int32_t end_y = std::min(int32_t(cin->size()[2]) - 1, offst_y + (upper[1] - lower[1]));
+                int32_t start_x = std::max(offst_x, 0);
+                int32_t end_x = std::min(int32_t(cin->size()[3]) - 1, offst_x + (upper[2] - lower[2]));
+
+                for (int32_t ib = 0; ib < int32_t(cin->size()[0]); ++ib) {
+                    for (int32_t it = start_t; it<=end_t; ++it) {
+                        for (int32_t iy = start_y; iy<=end_y; ++iy) {
+                            for (int32_t ix = start_x; ix<=end_x; ++ix) {
+                                ((double*)(out->buf()))[
+                                    ib * size_tyx[0] * size_tyx[1] * size_tyx[2] + 
+                                    (it - offst_t) * size_tyx[1] * size_tyx[2] + 
+                                    (iy - offst_y) * size_tyx[2] + 
+                                    (ix - offst_x)] = 
+                                    ((double*)(cin->buf()))[
+                                        ib * (int32_t)cin->size()[1] * (int32_t)cin->size()[2] * cin->size()[3] + 
+                                        it * (int32_t)cin->size()[2] * (int32_t)cin->size()[3] + 
+                                        iy * (int32_t)cin->size()[3] + 
+                                        ix];
+                            }
+                        }   
+                    }
+                }
+            } 
+        }
+    }
+
+    return out;
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void chunk_data::write_ncdf(std::string path, uint8_t compression_level, bool force) {
     if (filesystem::exists(path)) {
         GCBS_ERROR("File already exists");
@@ -1794,8 +1805,9 @@ void chunk_data::write_ncdf(std::string path, uint8_t compression_level, bool fo
     }
 
     if (!force) {
-        if (empty() || all_nan()) {
-            GCBS_WARN("Requested chunk is completely empty (NAN), and will not be written to a netCDF file on disk");
+        // Only avoid writing chunks if they have status OK and are empty / all NAN
+        if (_status == chunk_status::OK && all_nan()) { 
+            GCBS_DEBUG("Requested chunk is completely empty (NAN), and will not be written to a netCDF file on disk");
             return;
         }
     }
@@ -1816,6 +1828,9 @@ void chunk_data::write_ncdf(std::string path, uint8_t compression_level, bool fo
 
     std::string att_source = "gdalcubes " + std::to_string(GDALCUBES_VERSION_MAJOR) + "." + std::to_string(GDALCUBES_VERSION_MINOR) + "." + std::to_string(GDALCUBES_VERSION_PATCH);
     nc_put_att_text(ncout, NC_GLOBAL, "source", std::strlen(att_source.c_str()), att_source.c_str());
+    
+    int nc_chunk_status = (int)_status;
+    nc_put_att(ncout, NC_GLOBAL, "chunk_status", NC_INT, 1, &nc_chunk_status);
 
     int d_all[] = {d_b, d_t, d_y, d_x};
     int v;
@@ -1845,6 +1860,15 @@ void chunk_data::read_ncdf(std::string path) {
     if (retval != NC_NOERR) {
         GCBS_ERROR("Failed to open netCDF file '" + path + "'; nc_open() returned " + std::to_string(retval));
         return;
+    }
+
+    int s = 0;
+    if (nc_get_att_int(ncfile, NC_GLOBAL, "chunk_status", &s) == NC_NOERR) {
+        set_status(static_cast<chunk_data::chunk_status>(s));
+    }
+    else {
+        GCBS_DEBUG("NetCDF chunk file does not contain chunk status data. ");
+        set_status(chunk_data::chunk_status::UNKNOWN);
     }
 
     int dim_id_x = -1;

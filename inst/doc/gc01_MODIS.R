@@ -8,11 +8,11 @@ knitr::opts_chunk$set(
 ## ----data_download, echo=TRUE, results='hide'---------------------------------
 options(timeout = max(1800, getOption("timeout")))
 dest_dir = tempdir()
-download.file("https://uni-muenster.sciebo.de/s/eP9E6OIkQbXrmsY/download", destfile=file.path(dest_dir, "MOD11A2.zip"),mode = "wb")
+download.file("https://hs-bochum.sciebo.de/s/8mKf1Ye1z9SRUr8/download", destfile=file.path(dest_dir, "MOD11A2.zip"),mode = "wb")
 unzip(file.path(dest_dir, "MOD11A2.zip"), exdir = file.path(dest_dir,"MOD11A2"))
 unlink(file.path(dest_dir, "MOD11A2.zip"))
 
-## ---- eval=TRUE---------------------------------------------------------------
+## ----eval=TRUE----------------------------------------------------------------
 library(gdalcubes)
 collection_formats()
 
@@ -28,20 +28,19 @@ MODIS.cube
 names(MODIS.cube)
 dim(MODIS.cube)
 
-## ---- fig.align="center", fig.dim=c(4.5,4.5)----------------------------------
+## ----fig.align="center", fig.dim=c(4.5,4.5)-----------------------------------
 MOD11A2.bandselect = select_bands(MODIS.cube, c("LST_DAY","LST_NIGHT"))
 MOD11A2.daynight_difference = 
   apply_pixel(MOD11A2.bandselect, "0.02*(LST_DAY-LST_NIGHT)",names = "LST_difference")
 MOD11A2.reduce = reduce_time(MOD11A2.daynight_difference, "median(LST_difference)")
 plot(MOD11A2.reduce, col=heat.colors, key.pos=1)
 
-## ---- fig.dim=c(7,3.5),fig.align="center"-------------------------------------
-library(magrittr) # get the pipe
+## ----fig.dim=c(7,3.5),fig.align="center"--------------------------------------
 # update v by changing temporal extent only
 v1 = cube_view(view=v, extent=list(t0="2018-06", t1="2018-09")) 
-raster_cube(MODIS.collection, v1)  %>%
-  select_bands(c("LST_DAY")) %>%
-  apply_pixel("LST_DAY * 0.02") %>% # apply scale
-  window_time(kernel=c(-1,1), window=c(1,0)) %>%
+raster_cube(MODIS.collection, v1)  |>
+  select_bands(c("LST_DAY")) |>
+  apply_pixel("LST_DAY * 0.02") |> # apply scale
+  window_time(kernel=c(-1,1), window=c(1,0)) |>
   plot(col=terrain.colors, key.pos=1, zlim=c(-25,25), t = 2:4, ncol = 3)
 

@@ -77,7 +77,9 @@ reduce_space <- function(x, ...) {
 #' @param expr either a single string, or a vector of strings defining which reducers will be applied over which bands of the input cube
 #' @param ... optional additional expressions (if \code{expr} is not a vector)
 #' @param FUN a user-defined R function applied over pixel time series (see Details)
-#' @param names character vector; if FUN is provided, names can be used to define the number and name of output bands
+#' @param load_pkgs logical or character; if TRUE, all currently attached packages will be attached automatically before executing FUN in spawned R processes, specific packages can alternatively be provided as a character vector.
+#' @param load_env logical or environment; if TRUE, the current global environment will be restored automatically before executing FUN in spawned R processes, can be set to a custom environment.
+#' @param names character vector; names of the output bands, if FUN is provided, the length of names is used as the expected number of output bands
 #' @return proxy data cube object
 #' @note Implemented reducers will ignore any NAN values (as na.rm=TRUE does)
 #' @examples 
@@ -127,8 +129,11 @@ reduce_space <- function(x, ...) {
 #' as bands in the result cube. Notice that it is recommended to specify the names of the output bands as a character vector. If names are missing,
 #' the number and names of output bands is tried to be derived automatically, which may fail in some cases. 
 #' 
+#' For more details and examples on how to write user-defined functions, please refer to the gdalcubes website 
+#' at \url{https://gdalcubes.github.io/source/concepts/udfs.html}.
+#' 
 #' @export
-reduce_time.cube <- function(x, expr, ..., FUN, names=NULL) {
+reduce_time.cube <- function(x, expr, ..., FUN, names=NULL, load_pkgs=FALSE, load_env=FALSE) {
   stopifnot(is.cube(x))
   if (missing(expr) && missing(FUN)) {
     stop("either a expr or FUN must be provided ")
@@ -153,7 +158,7 @@ reduce_time.cube <- function(x, expr, ..., FUN, names=NULL) {
     reducers = gsub("\\(.*\\)", "", expr)
     bands =  gsub("[\\(\\)]", "", regmatches(expr, gregexpr("\\(.*?\\)", expr)))
     stopifnot(length(reducers) == length(bands))
-    x = gc_create_reduce_time_cube(x, reducers, bands)
+    x = gc_create_reduce_time_cube(x, reducers, bands, names)
     class(x) <- c("reduce_time_cube", "cube", "xptr")
     return(x)
   }
@@ -182,6 +187,35 @@ reduce_time.cube <- function(x, expr, ..., FUN, names=NULL) {
       })
     }
     
+    if (is.logical(load_env)) {
+      if (load_env) {
+        load_env = .GlobalEnv
+      }
+      else
+        load_env = NULL
+    }
+    if (!is.null(load_env)) {
+      if (!is.environment(load_env)) {
+        warning("Expected either FALSE/TRUE or environment for load_env; parameter will be set to FALSE.")
+        load_env = NULL
+      }
+    }
+    
+    if (is.logical(load_pkgs)) {
+      if (load_pkgs) {
+        load_pkgs = .packages()
+      }
+      else {
+        load_pkgs = NULL
+      }
+    }
+    if (!is.null(load_pkgs)) {
+      if (!is.character(load_pkgs)) {
+        warning("Expected either FALSE/TRUE or character vector for load_pkgs; parameter will be set to FALSE.")
+        load_pkgs = NULL
+      }
+    }
+    
     # create src file
     # TODO: load the same packages as in the current workspace? see (.packages())
     funstr = serialize_function(FUN)
@@ -197,6 +231,17 @@ reduce_time.cube <- function(x, expr, ..., FUN, names=NULL) {
     cat(paste0(".libPaths(",  paste(deparse(.libPaths()),collapse=""), ")\n"), file = srcfile2, append = FALSE) 
 
     cat("require(gdalcubes)", "\n", file = srcfile2, append = TRUE)
+    if (!is.null(load_pkgs)) {
+      cat(paste0("require(", load_pkgs,")",collapse  = "\n"), "\n", file = srcfile2, append = TRUE) 
+    }
+    if (!is.null(load_env)) {
+      if (sum(sapply(ls(envir = load_env), FUN = function(x) {object.size(get(x, envir = load_env))})) > 100*1024^2) {
+        warning("The current environment seems to be rather large (> 100 Mb), if this results in reduced performance, please consider setting load_env = FALSE.")
+      }
+      envfile = tempfile(pattern="renv_", fileext = ".rda")
+      save(list = ls(envir = load_env),file = envfile, envir = load_env)
+      cat(paste0("load(\"", envfile, "\")"), "\n", file = srcfile2, append = TRUE)
+    }
     cat(paste("assign(\"f\", eval(parse(\"", srcfile1, "\")))", sep=""), "\n", file = srcfile2, append = TRUE)
     cat("write_chunk_from_array(reduce_time(read_chunk_as_array(), f))", "\n", file = srcfile2, append = TRUE)
     cmd <- paste(file.path(R.home("bin"),"Rscript"), " --vanilla ", srcfile2, sep="")
@@ -218,7 +263,9 @@ reduce_time.cube <- function(x, expr, ..., FUN, names=NULL) {
 #' @param expr either a single string, or a vector of strings defining which reducers will be applied over which bands of the input cube
 #' @param ... optional additional expressions (if \code{expr} is not a vector)
 #' @param FUN a user-defined R function applied over pixel time series (see Details)
-#' @param names character vector; if FUN is provided, names can be used to define the number and name of output bands
+#' @param load_pkgs logical or character; if TRUE, all currently attached packages will be attached automatically before executing FUN in spawned R processes, specific packages can alternatively be provided as a character vector.
+#' @param load_env logical or environment; if TRUE, the current global environment will be restored automatically before executing FUN in spawned R processes, can be set to a custom environment.
+#' @param names character vector; names of the output bands, if FUN is provided, the length of names is used as the expected number of output bands
 #' @return proxy data cube object
 #' @note Implemented reducers will ignore any NAN values (as na.rm=TRUE does).
 #' @examples 
@@ -243,12 +290,17 @@ reduce_time.cube <- function(x, expr, ..., FUN, names=NULL) {
 #' }
 #' 
 #' @note This function returns a proxy object, i.e., it will not start any computations besides deriving the shape of the result.
-#' @details Notice that expressions have a very simple format: the reducer is followed by the name of a band in parantheses. You cannot add
+#' @details Notice that expressions have a very simple format: the reducer is followed by the name of a band in parentheses. You cannot add
 #' more complex functions or arguments.
 #' 
-#' Possible reducers currently are "min", "max", "sum", "prod", "count", "mean", "median", "var", "sd".
+#' Possible reducers currently include "min", "max", "sum", "prod", "count", "mean", "median", "var", and "sd".
+#' 
+#' For more details and examples on how to write user-defined functions, please refer to the gdalcubes website 
+#' at \url{https://gdalcubes.github.io/source/concepts/udfs.html}.
+#' 
+#' 
 #' @export
-reduce_space.cube <- function(x, expr, ..., FUN, names=NULL) {
+reduce_space.cube <- function(x, expr, ..., FUN, names=NULL, load_pkgs=FALSE, load_env=FALSE) {
   stopifnot(is.cube(x))
   if (missing(expr) && missing(FUN)) {
     stop("either a expr or FUN must be provided ")
@@ -273,7 +325,7 @@ reduce_space.cube <- function(x, expr, ..., FUN, names=NULL) {
     reducers = gsub("\\(.*\\)", "", expr)
     bands =  gsub("[\\(\\)]", "", regmatches(expr, gregexpr("\\(.*?\\)", expr)))
     stopifnot(length(reducers) == length(bands))
-    x = gc_create_reduce_space_cube(x, reducers, bands)
+    x = gc_create_reduce_space_cube(x, reducers, bands, names)
     class(x) <- c("reduce_space_cube", "cube", "xptr")
     return(x)
   }
@@ -301,6 +353,35 @@ reduce_space.cube <- function(x, expr, ..., FUN, names=NULL) {
       })
     }
     
+    if (is.logical(load_env)) {
+      if (load_env) {
+        load_env = .GlobalEnv
+      }
+      else
+        load_env = NULL
+    }
+    if (!is.null(load_env)) {
+      if (!is.environment(load_env)) {
+        warning("Expected either FALSE/TRUE or environment for load_env; parameter will be set to FALSE.")
+        load_env = NULL
+      }
+    }
+    
+    if (is.logical(load_pkgs)) {
+      if (load_pkgs) {
+        load_pkgs = .packages()
+      }
+      else {
+        load_pkgs = NULL
+      }
+    }
+    if (!is.null(load_pkgs)) {
+      if (!is.character(load_pkgs)) {
+        warning("Expected either FALSE/TRUE or character vector for load_pkgs; parameter will be set to FALSE.")
+        load_pkgs = NULL
+      }
+    }
+    
     # create src file
     # TODO: load the same packages as in the current workspace? see (.packages())
     funstr = serialize_function(FUN)
@@ -316,6 +397,17 @@ reduce_space.cube <- function(x, expr, ..., FUN, names=NULL) {
     cat(paste0(".libPaths(",  paste(deparse(.libPaths()),collapse=""), ")\n"), file = srcfile2, append = FALSE) 
     
     cat("require(gdalcubes)", "\n", file = srcfile2, append = TRUE)
+    if (!is.null(load_pkgs)) {
+      cat(paste0("require(", load_pkgs,")",collapse  = "\n"), "\n", file = srcfile2, append = TRUE) 
+    }
+    if (!is.null(load_env)) {
+      if (sum(sapply(ls(envir = load_env), FUN = function(x) {object.size(get(x, envir = load_env))})) > 100*1024^2) {
+        warning("The current environment seems to be rather large (> 100 Mb), if this results in reduced performance, please consider setting load_env = FALSE.")
+      }
+      envfile = tempfile(pattern="renv_", fileext = ".rda")
+      save(list = ls(envir = load_env),file = envfile, envir = load_env)
+      cat(paste0("load(\"", envfile, "\")"), "\n", file = srcfile2, append = TRUE)
+    }
     cat(paste("assign(\"f\", eval(parse(\"", srcfile1, "\")))", sep=""), "\n", file = srcfile2, append = TRUE)
     cat("write_chunk_from_array(reduce_space(read_chunk_as_array(), f))", "\n", file = srcfile2, append = TRUE)
     cmd <- paste(file.path(R.home("bin"),"Rscript"), " --vanilla ", srcfile2, sep="")

@@ -481,7 +481,7 @@ Rcpp::List gc_dimension_bounds(SEXP pin, std::string dt_unit="") {
   Rcpp::NumericVector dimy(2*x->st_reference()->ny());
   
   if (!x->st_reference()->has_regular_space()) {
-    Rcpp::stop("Irregular spatial dimensions are currently not supprted");
+    Rcpp::stop("Irregular spatial dimensions are currently not supported");
   }
   
   // NOTE: the following will only work as long as all cube st reference types with regular spatial dimensions inherit from  cube_stref_regular class
@@ -538,7 +538,7 @@ Rcpp::List gc_dimension_values(SEXP pin, std::string dt_unit="") {
   Rcpp::NumericVector dimy(x->st_reference()->ny());
   
   if (!x->st_reference()->has_regular_space()) {
-    Rcpp::stop("Irregular spatial dimensions are currently not supprted");
+    Rcpp::stop("Irregular spatial dimensions are currently not supported");
   }
   
   // NOTE: the following will only work as long as all cube st reference types with regular spatial dimensions inherit from  cube_stref_regular class
@@ -844,7 +844,7 @@ SEXP gc_create_view(SEXP v) {
 
 
 // [[Rcpp::export]]
-SEXP gc_create_image_collection_cube(SEXP pin, Rcpp::IntegerVector chunk_sizes, SEXP mask, SEXP v = R_NilValue) {
+SEXP gc_create_image_collection_cube(SEXP pin, Rcpp::IntegerVector chunk_sizes, SEXP mask,bool strict = true, SEXP v = R_NilValue) {
 
   try {
     Rcpp::XPtr<std::shared_ptr<image_collection>> aa = Rcpp::as<Rcpp::XPtr<std::shared_ptr<image_collection>>>(pin);
@@ -858,6 +858,7 @@ SEXP gc_create_image_collection_cube(SEXP pin, Rcpp::IntegerVector chunk_sizes, 
       x = new std::shared_ptr<image_collection_cube>( image_collection_cube::create(*aa, cv));
     }
     (*x)->set_chunk_size(chunk_sizes[0], chunk_sizes[1], chunk_sizes[2]);
+    (*x)->set_strict(strict);
     
     
     if (mask != R_NilValue) {
@@ -1025,7 +1026,7 @@ SEXP gc_create_rename_bands_cube(SEXP pin, std::vector<std::string> names_old, s
 
 
 // [[Rcpp::export]]
-SEXP gc_create_reduce_time_cube(SEXP pin, std::vector<std::string> reducers, std::vector<std::string> bands) {
+SEXP gc_create_reduce_time_cube(SEXP pin, std::vector<std::string> reducers, std::vector<std::string> bands,SEXP names = R_NilValue) {
   try {
     Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr<std::shared_ptr<cube>>>(pin);
     
@@ -1034,8 +1035,12 @@ SEXP gc_create_reduce_time_cube(SEXP pin, std::vector<std::string> reducers, std
       // assuming reducers.size() == bands.size(), this is checked in R code calling this function
       reducer_bands.push_back(std::make_pair(reducers[i], bands[i]));
     }
+    std::shared_ptr<reduce_time_cube>* x;
+    if (names != R_NilValue)
+      x = new std::shared_ptr<reduce_time_cube>(reduce_time_cube::create(*aa, reducer_bands, Rcpp::as<std::vector<std::string>>(names)));
+    else
+      x = new std::shared_ptr<reduce_time_cube>(reduce_time_cube::create(*aa, reducer_bands));
     
-    std::shared_ptr<reduce_time_cube>* x = new std::shared_ptr<reduce_time_cube>(reduce_time_cube::create(*aa, reducer_bands));
     Rcpp::XPtr< std::shared_ptr<reduce_time_cube> > p(x, true) ;
     
     return p;
@@ -1075,7 +1080,7 @@ SEXP gc_create_stream_reduce_space_cube(SEXP pin, std::string cmd, uint16_t nban
 
 
 // [[Rcpp::export]]
-SEXP gc_create_reduce_space_cube(SEXP pin, std::vector<std::string> reducers, std::vector<std::string> bands) {
+SEXP gc_create_reduce_space_cube(SEXP pin, std::vector<std::string> reducers, std::vector<std::string> bands, SEXP names = R_NilValue) {
   try {
     Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr<std::shared_ptr<cube>>>(pin);
     
@@ -1085,7 +1090,12 @@ SEXP gc_create_reduce_space_cube(SEXP pin, std::vector<std::string> reducers, st
       reducer_bands.push_back(std::make_pair(reducers[i], bands[i]));
     }
     
-    std::shared_ptr<reduce_space_cube>* x = new std::shared_ptr<reduce_space_cube>(reduce_space_cube::create(*aa, reducer_bands));
+    std::shared_ptr<reduce_space_cube>* x;
+    if (names != R_NilValue)
+      x = new std::shared_ptr<reduce_space_cube>(reduce_space_cube::create(*aa, reducer_bands, Rcpp::as<std::vector<std::string>>(names)));
+    else
+      x = new std::shared_ptr<reduce_space_cube>(reduce_space_cube::create(*aa, reducer_bands));
+    
     Rcpp::XPtr< std::shared_ptr<reduce_space_cube> > p(x, true) ;
     
     return p;
@@ -1134,6 +1144,42 @@ SEXP gc_create_window_time_cube_kernel(SEXP pin, std::vector<int> window, std::v
   }
 }
 
+// [[Rcpp::export]]
+SEXP gc_create_window_space_cube_reduce(SEXP pin, std::vector<std::string> reducers, std::vector<std::string> bands, int win_size_y, int win_size_x, bool keep_bands, std::string pad_mode, double pad_fill) {
+  try {
+    Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr<std::shared_ptr<cube>>>(pin);
+    
+    std::vector<std::pair<std::string, std::string>> reducer_bands;
+    for (uint16_t i=0; i<reducers.size(); ++i) {
+      // assuming reducers.size() == bands.size(), this is checked in R code calling this function
+      reducer_bands.push_back(std::make_pair(reducers[i], bands[i]));
+    }
+    
+    std::shared_ptr<window_space_cube>* x = new std::shared_ptr<window_space_cube>(window_space_cube::create(*aa, reducer_bands, win_size_y, win_size_x, keep_bands, pad_mode, pad_fill));
+    Rcpp::XPtr< std::shared_ptr<window_space_cube> > p(x, true) ;
+    
+    return p;
+    
+  }
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
+
+// [[Rcpp::export]]
+SEXP gc_create_window_space_cube_kernel(SEXP pin, std::vector<double> kernel, int win_size_y, int win_size_x, bool keep_bands, std::string pad_mode, double pad_fill) {
+  try {
+    Rcpp::XPtr< std::shared_ptr<cube> > aa = Rcpp::as<Rcpp::XPtr<std::shared_ptr<cube>>>(pin);
+    
+    std::shared_ptr<window_space_cube>* x = new std::shared_ptr<window_space_cube>(window_space_cube::create(*aa, kernel, win_size_y, win_size_x, keep_bands, pad_mode, pad_fill));
+    Rcpp::XPtr< std::shared_ptr<window_space_cube> > p(x, true) ;
+    return p;
+    
+  }
+  catch (std::string s) {
+    Rcpp::stop(s);
+  }
+}
 
 // [[Rcpp::export]]
 SEXP gc_create_join_bands_cube(Rcpp::List pin_list,  std::vector<std::string> cube_names) {
@@ -1419,12 +1465,13 @@ SEXP gc_create_stream_cube(SEXP pin, std::string cmd) {
 // [[Rcpp::export]]
 SEXP gc_create_simple_cube(std::vector<std::string> files,std::vector<std::string> datetime_values, 
                                      std::vector<std::string> bands,  std::vector<std::string> band_names, 
-                                     double dx, double dy,  Rcpp::IntegerVector chunk_sizes) {
+                                     double dx, double dy,  Rcpp::IntegerVector chunk_sizes, bool strict = true) {
   try {
     std::shared_ptr<simple_cube>* x = new std::shared_ptr<simple_cube>( simple_cube::create(files, datetime_values,
                                                                                             bands, band_names,
                                                                                             dx, dy));
     (*x)->set_chunk_size(chunk_sizes[0], chunk_sizes[1], chunk_sizes[2]);
+    (*x)->set_strict(strict);
     Rcpp::XPtr< std::shared_ptr<simple_cube> > p(x, true) ;
     return p;
   }

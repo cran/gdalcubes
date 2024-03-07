@@ -4,7 +4,15 @@
 \alias{reduce_space.cube}
 \title{Reduce a data cube over spatial (x,y or lat,lon) dimensions}
 \usage{
-\method{reduce_space}{cube}(x, expr, ..., FUN, names = NULL)
+\method{reduce_space}{cube}(
+  x,
+  expr,
+  ...,
+  FUN,
+  names = NULL,
+  load_pkgs = FALSE,
+  load_env = FALSE
+)
 }
 \arguments{
 \item{x}{source data cube}
@@ -15,7 +23,11 @@
 
 \item{FUN}{a user-defined R function applied over pixel time series (see Details)}
 
-\item{names}{character vector; if FUN is provided, names can be used to define the number and name of output bands}
+\item{names}{character vector; names of the output bands, if FUN is provided, the length of names is used as the expected number of output bands}
+
+\item{load_pkgs}{logical or character; if TRUE, all currently attached packages will be attached automatically before executing FUN in spawned R processes, specific packages can alternatively be provided as a character vector.}
+
+\item{load_env}{logical or environment; if TRUE, the current global environment will be restored automatically before executing FUN in spawned R processes, can be set to a custom environment.}
 }
 \value{
 proxy data cube object
@@ -24,10 +36,13 @@ proxy data cube object
 Create a proxy data cube, which applies one or more reducer functions to selected bands over spatial slices of a data cube
 }
 \details{
-Notice that expressions have a very simple format: the reducer is followed by the name of a band in parantheses. You cannot add
+Notice that expressions have a very simple format: the reducer is followed by the name of a band in parentheses. You cannot add
 more complex functions or arguments.
 
-Possible reducers currently are "min", "max", "sum", "prod", "count", "mean", "median", "var", "sd".
+Possible reducers currently include "min", "max", "sum", "prod", "count", "mean", "median", "var", and "sd".
+
+For more details and examples on how to write user-defined functions, please refer to the gdalcubes website 
+at \url{https://gdalcubes.github.io/source/concepts/udfs.html}.
 }
 \note{
 Implemented reducers will ignore any NAN values (as na.rm=TRUE does).

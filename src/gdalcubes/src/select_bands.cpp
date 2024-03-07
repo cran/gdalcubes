@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2019 Marius Appel <marius.appel@uni-muenster.de>
+    Copyright (c) 2019 Marius Appel <marius.appel@hs-bochum.de>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -37,12 +37,17 @@ std::shared_ptr<chunk_data> select_bands_cube::read_chunk(chunkid_t id) {
     }
 
     std::shared_ptr<chunk_data> in = _in_cube->read_chunk(id);
+
+    // propagate chunk status
+
+    std::shared_ptr<chunk_data> out = std::make_shared<chunk_data>();
+    out->set_status(in->status());  // propagate chunk status
     if (in->empty()) {
-        return std::make_shared<chunk_data>();
+        return out;
     }
 
     // Fill buffers accordingly
-    std::shared_ptr<chunk_data> out = std::make_shared<chunk_data>();
+
     out->size({_bands.count(), in->size()[1], in->size()[2], in->size()[3]});
     out->buf(std::calloc(_bands.count() * in->size()[1] * in->size()[2] * in->size()[3], sizeof(double)));
 

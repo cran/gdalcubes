@@ -19,6 +19,7 @@ OBJECTS = gdalcubes/src/aggregate_time.o \
 			gdalcubes/src/select_time.o \
 			gdalcubes/src/reduce_time.o \
 			gdalcubes/src/reduce_space.o \
+			gdalcubes/src/window_space.o \
 			gdalcubes/src/window_time.o \
 			gdalcubes/src/select_bands.o \
 			gdalcubes/src/slice_time.o \
@@ -50,7 +51,8 @@ PKG_CPPFLAGS = \
 
 LIBSHARPYUV = $(or $(and $(wildcard $(R_TOOLS_SOFT)/lib/libsharpyuv.a),-lsharpyuv),)
 
-PKG_LIBS = \
+ifeq (,$(shell pkg-config --version 2>/dev/null))
+  PKG_LIBS = \
   -fopenmp -lgdal -larmadillo -lopenblas -lgfortran -lquadmath -lpq -lpgcommon -lpgport -lodbc32 \
   -lodbccp32 -lblosc -lkea -lhdf5_cpp -lhdf5 -lpoppler -llcms2 -lfreetype -lharfbuzz -lfreetype -llz4 \
   -lpcre2-8 -lxml2 -lopenjp2 -lnetcdf -lmysqlclient -lspatialite -lgeos_c -lgeos -lminizip -lgeos \
@@ -59,7 +61,9 @@ PKG_LIBS = \
   -lcurl -lbcrypt -lrtmp -lssl -lssh2 -lidn2 -lunistring -liconv -lgcrypt -lcrypto -lgpg-error \
   -lws2_32 -ltiff -llzma -ljpeg -lz -lcfitsio -lzstd -lwebpdecoder -lwebp $(LIBSHARPYUV) -lsbml-static -lgeotiff \
   -lproj -lsqlite3 -lbz2 -lcrypt32 -lwldap32 -lsecur32
-
+else
+  PKG_LIBS = $(shell pkg-config --libs netcdf sqlite3 gdal)
+endif
 
 all: clean winlibs
 

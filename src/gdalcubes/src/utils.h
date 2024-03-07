@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2019 Marius Appel <marius.appel@uni-muenster.de>
+    Copyright (c) 2019 Marius Appel <marius.appel@hs-bochum.de>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -96,6 +96,7 @@ class utils {
         void set(std::map<std::string, std::string> vars);
         void unset(std::set<std::string> var_names);
         void unset_all();
+        std::string get(std::string var_name, std::string default_value = "");
 
         // Convert environment variable map to a JSON string
         std::string to_string();

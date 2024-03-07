@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2019 Marius Appel <marius.appel@uni-muenster.de>
+    Copyright (c) 2019 Marius Appel <marius.appel@hs-bochum.de>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 #include "view.h"
 
 namespace gdalcubes {
+
 
 typedef std::array<uint32_t, 4> cube_coordinate_btyx;
 typedef std::array<uint32_t, 3> cube_coordinate_tyx;
@@ -84,70 +85,14 @@ struct packed_export {
      */
     std::vector<double> nodata;
 
-    static packed_export make_none() {
-        packed_export out;
-        out.type = packing_type::PACK_NONE;
-        return out;
-    }
-
-    static packed_export make_float32() {
-        packed_export out;
-        out.type = packing_type::PACK_FLOAT32;
-        out.scale = {1};
-        out.offset = {0};
-        out.nodata = {std::numeric_limits<int16_t>::lowest()};
-        return out;
-    }
-
-    static packed_export make_uint16(double scale, double offset, double nodata) {
-        packed_export out;
-        out.type = packing_type::PACK_UINT16;
-        out.scale = {scale};
-        out.offset = {offset};
-        out.nodata = {nodata};
-        return out;
-    }
-
-    static packed_export make_uint16(std::vector<double> scale, std::vector<double> offset, std::vector<double> nodata) {
-        packed_export out;
-        out.type = packing_type::PACK_UINT16;
-        out.scale = scale;
-        out.offset = offset;
-        out.nodata = nodata;
-        return out;
-    }
-
-    static packed_export make_int16(double scale, double offset) {
-        packed_export out;
-        out.type = packing_type::PACK_UINT16;
-        out.scale = {scale};
-        out.offset = {offset};
-        return out;
-    }
-
-    static packed_export make_int16(std::vector<double> scale, std::vector<double> offset) {
-        packed_export out;
-        out.type = packing_type::PACK_INT16;
-        out.scale = scale;
-        out.offset = offset;
-        return out;
-    }
-
-    static packed_export make_uint8(double scale, double offset) {
-        packed_export out;
-        out.type = packing_type::PACK_UINT16;
-        out.scale = {scale};
-        out.offset = {offset};
-        return out;
-    }
-
-    static packed_export make_uint8(std::vector<double> scale, std::vector<double> offset) {
-        packed_export out;
-        out.type = packing_type::PACK_UINT8;
-        out.scale = scale;
-        out.offset = offset;
-        return out;
-    }
+    static packed_export make_none();
+    static packed_export make_float32();
+    static packed_export make_uint16(double scale, double offset, double nodata);
+    static packed_export make_uint16(std::vector<double> scale, std::vector<double> offset, std::vector<double> nodata);
+    static packed_export make_int16(double scale, double offset);
+    static packed_export make_int16(std::vector<double> scale, std::vector<double> offset);
+    static packed_export make_uint8(double scale, double offset);
+    static packed_export make_uint8(std::vector<double> scale, std::vector<double> offset);
 };
 
 class cube;
@@ -317,10 +262,18 @@ class band_collection {
  */
 class chunk_data {
    public:
+
+    enum class chunk_status {
+        OK = 0,
+        ERROR = 1,
+        INCOMPLETE = 2,
+        UNKNOWN = 128
+    };
+
     /**
      * @brief Default constructor that creates an empty chunk
      */
-    chunk_data() : _buf(nullptr), _size({{0, 0, 0, 0}}) {}
+    chunk_data() : _buf(nullptr), _size({{0, 0, 0, 0}}), _status(chunk_status::OK) {}
 
     ~chunk_data() {
         if (_buf && _size[0] * _size[1] * _size[2] * _size[3] > 0) std::free(_buf);
@@ -360,15 +313,7 @@ class chunk_data {
      * @brief Check if the buffer contains only NAN values
      * @return true, if all values are NAN, or the chunk is empty
      */
-    bool all_nan() {
-        if (empty()) return true;
-        for (uint32_t i=0; i< _size[0] * _size[1] * _size[2] * _size[3]; ++i) {
-            if (!std::isnan(((double*)_buf)[i])) {
-                return false;
-            }
-        }
-        return true;
-    }
+    bool all_nan();
 
     /**
      * @brief Access the raw buffer where the data is stored in memory
@@ -427,9 +372,19 @@ class chunk_data {
      */
     void read_ncdf(std::string path);
 
+
+    void set_status(chunk_status s) {
+        _status = s;
+    }
+
+    chunk_status status() {
+        return _status;
+    }
+
    private:
     void *_buf;
     chunk_size_btyx _size;
+    chunk_status _status; // error flags
 };
 
 /**
@@ -458,8 +413,6 @@ class cube : public std::enable_shared_from_this<cube> {
      */
     cube(std::shared_ptr<cube_stref> st_ref) : _st_ref(st_ref), _chunk_size(), _bands(), _pre(), _succ() {
         _chunk_size = {16, 256, 256};
-
-        // TODO: add bands
     }
 
     virtual ~cube() {}
@@ -469,114 +422,21 @@ class cube : public std::enable_shared_from_this<cube> {
      * @param p point in spacetime coordinates
      * @return a unique chunk identifier (uint32_t)
      */
-    chunkid_t find_chunk_that_contains(coords_st p) const {
-        uint32_t cumprod = 1;
-        chunkid_t id = 0;
-
-        // 1. Convert map coordinates to view-based coordinates
-        coords_nd<uint32_t, 3> s = _st_ref->cube_coords(p);
-
-        // 2. Find out which chunk contains the integer view coordinates
-        id += cumprod * (s[2] / _chunk_size[2]);
-        cumprod *= (uint32_t)std::ceil(((double)_st_ref->nx()) / ((double)_chunk_size[2]));
-        id += cumprod * (s[1] / _chunk_size[1]);
-        cumprod *= (uint32_t)std::ceil(((double)(_st_ref->ny()) / ((double)_chunk_size[1])));
-        id += cumprod * (s[0] / _chunk_size[0]);
-        //cumprod *= (uint32_t)std::ceil(((double)(_c->view().nt()) / ((double)_size_t);
-
-        return id;
-    }
+    chunkid_t find_chunk_that_contains(coords_st p) const;
 
     /**
      * @brief Calculate the limits of a given chunk
      * @param c chunk coordinates
      * @return the limits in t,y, and x, as integer data cube coordinates
      */
-    bounds_nd<uint32_t, 3> chunk_limits(chunk_coordinate_tyx c) const {
-        cube_coordinate_tyx out_vcoords_low;
-        cube_coordinate_tyx out_vcoords_high;
-
-        out_vcoords_low[0] = c[0] * _chunk_size[0];
-        out_vcoords_low[1] = c[1] * _chunk_size[1];
-        out_vcoords_low[2] = c[2] * _chunk_size[2];
-        out_vcoords_high[0] = out_vcoords_low[0] + _chunk_size[0] - 1;
-        out_vcoords_high[1] = out_vcoords_low[1] + _chunk_size[1] - 1;
-        out_vcoords_high[2] = out_vcoords_low[2] + _chunk_size[2] - 1;
-
-        // Shrink to view
-        if (out_vcoords_high[0] >= _st_ref->nt())
-            out_vcoords_high[0] = _st_ref->nt() - 1;
-        if (out_vcoords_low[0] >= _st_ref->nt())
-            out_vcoords_low[0] = _st_ref->nt() - 1;
-
-        if (out_vcoords_high[1] >= _st_ref->ny())
-            out_vcoords_high[1] = _st_ref->ny() - 1;
-        if (out_vcoords_low[1] >= _st_ref->ny())
-            out_vcoords_low[1] = _st_ref->ny() - 1;
-
-        if (out_vcoords_high[2] >= _st_ref->nx())
-            out_vcoords_high[2] = _st_ref->nx() - 1;
-        if (out_vcoords_low[2] >= _st_ref->nx())
-            out_vcoords_low[2] = _st_ref->nx() - 1;
-
-        bounds_nd<uint32_t, 3> out;
-        out.low = out_vcoords_low;
-        out.high = out_vcoords_high;
-        return out;
-    };
+    bounds_nd<uint32_t, 3> chunk_limits(chunk_coordinate_tyx c) const;
 
     /**
      * @brief Calculate the limits of a given chunk
      * @param id chunk id
      * @return the limits in t,y, and x, as integer data cube coordinates
      */
-    bounds_nd<uint32_t, 3> chunk_limits(chunkid_t id) const {
-        coords_nd<uint32_t, 3> out_vcoords_low;
-        coords_nd<uint32_t, 3> out_vcoords_high;
-
-        // Transform to global coordinates based on chunk id
-        uint32_t cumprod = 1;
-        int32_t n;
-
-        n = (uint32_t)std::ceil(((double)(_st_ref->nx())) / ((double)_chunk_size[2]));
-        out_vcoords_low[2] = (id / cumprod) % n;
-        out_vcoords_low[2] *= _chunk_size[2];
-        out_vcoords_high[2] = out_vcoords_low[2] + _chunk_size[2] - 1;
-        cumprod *= n;
-
-        n = (uint32_t)std::ceil(((double)(_st_ref->ny())) / ((double)_chunk_size[1]));
-        out_vcoords_low[1] = (id / cumprod) % n;
-        out_vcoords_low[1] *= _chunk_size[1];
-        out_vcoords_high[1] = out_vcoords_low[1] + _chunk_size[1] - 1;
-        cumprod *= n;
-
-        n = (uint32_t)std::ceil(((double)(_st_ref->nt())) / ((double)_chunk_size[0]));
-        out_vcoords_low[0] = (id / cumprod) % n;
-        out_vcoords_low[0] *= _chunk_size[0];
-        out_vcoords_high[0] = out_vcoords_low[0] + _chunk_size[0] - 1;
-        cumprod *= n;
-
-        // Shrink to view
-        if (out_vcoords_high[0] >= _st_ref->nt())
-            out_vcoords_high[0] = _st_ref->nt() - 1;
-        if (out_vcoords_low[0] >= _st_ref->nt())
-            out_vcoords_low[0] = _st_ref->nt() - 1;
-
-        if (out_vcoords_high[1] >= _st_ref->ny())
-            out_vcoords_high[1] = _st_ref->ny() - 1;
-        if (out_vcoords_low[1] >= _st_ref->ny())
-            out_vcoords_low[1] = _st_ref->ny() - 1;
-
-        if (out_vcoords_high[2] >= _st_ref->nx())
-            out_vcoords_high[2] = _st_ref->nx() - 1;
-        if (out_vcoords_low[2] >= _st_ref->nx())
-            out_vcoords_low[2] = _st_ref->nx() - 1;
-
-        bounds_nd<uint32_t, 3> out;
-        out.low = out_vcoords_low;
-        out.high = out_vcoords_high;
-        return out;
-    };
+    bounds_nd<uint32_t, 3> chunk_limits(chunkid_t id) const;
 
     /**
      * @brief Default string description method for data cubes
@@ -625,24 +485,7 @@ class cube : public std::enable_shared_from_this<cube> {
      * @param id chunk id
      * @return chunk coordinates in t,y, and x directions
      */
-    chunk_coordinate_tyx chunk_coords_from_id(chunkid_t id) {
-        chunk_coordinate_tyx out;
-
-        uint32_t cumprod = 1;
-        int32_t n;
-
-        n = count_chunks_x();
-        out[2] = (id / cumprod) % n;
-        cumprod *= n;
-        n = count_chunks_y();
-        out[1] = (id / cumprod) % n;
-        cumprod *= n;
-        n = count_chunks_t();
-        out[0] = (id / cumprod) % n;
-        cumprod *= n;
-
-        return out;
-    }
+    chunk_coordinate_tyx chunk_coords_from_id(chunkid_t id);
 
     /**
      * @brief Convert chunk coordinates to a one-dimensional chunk id
@@ -673,25 +516,7 @@ class cube : public std::enable_shared_from_this<cube> {
      * @param id Chunk identifier
      * @return Spatiotemporal extent
      */
-    bounds_st bounds_from_chunk(chunkid_t id) const {
-        bounds_st out_st;
-
-        bounds_nd<uint32_t, 3> vb = chunk_limits(id);
-        coords_st low = _st_ref->map_coords(vb.low);
-        vb.high[0] += 1;
-        vb.high[1] += 1;
-        vb.high[2] += 1;
-        coords_st high = _st_ref->map_coords(vb.high);
-
-        out_st.s.left = low.s.x;
-        out_st.s.right = high.s.x;
-        out_st.s.bottom = high.s.y; // Important: high has lower y coordinates (because integer cube coordinates go top -> bottom)
-        out_st.s.top = low.s.y; // Important: low has higher y coordinates (because integer cube coordinates go top -> bottom)
-        out_st.t0 = low.t;
-        out_st.t1 = high.t;
-
-        return out_st;
-    }
+    bounds_st bounds_from_chunk(chunkid_t id) const;
 
     /**
      * @brief Get the chunk size of the cube
@@ -760,14 +585,23 @@ class cube : public std::enable_shared_from_this<cube> {
      */
     virtual std::shared_ptr<chunk_data> read_chunk(chunkid_t id) = 0;
 
+
     /**
-     * @brief Write a data cube as a set of GeoTIFF files under a given directory
-     *
-     * @param dir directory where to store the files
-     * @param p chunk processor instance, defaults to the global configuration
+     * @brief Read a window subset of a data cube to a buffer
+     * 
+     * This funtion guarantees that the output buffer has size prod(upper - lower + 1).
+     * It can work with negative cube coordinates.
+     * 
+     * Areas outside the cube are always filled with NAN. 
+     * Padding must be explicitly implemented in upstram code, if needed (e.g. window_space)
+     * 
+     * 
+     * @param lower coordinates of the lower pixel (cube coordinates)
+     * @param upper coordinates of the upper point (cube coordinates)
+     * @return a smart pointer to chunk data
      */
-    void write_chunks_gtiff(std::string dir,
-                            std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
+    std::shared_ptr<chunk_data> read_window(std::array<int32_t, 3> lower, std::array<int32_t, 3> upper);
+
 
     /**
      * @brief Writes a data cube as a collection of GeoTIFF files
@@ -828,38 +662,6 @@ class cube : public std::enable_shared_from_this<cube> {
 
     void write_single_chunk_netcdf(chunkid_t id, std::string path, uint8_t compression_level = 0);
 
-    /**
-     * @brief Writes a data cube as a collection of PNG files
-     *
-     * Each time slice of the cube will be written to one GeoTIFF file.
-     * @param dir output path
-     * @param prefix name prefix for created files
-     * @param bands vector with band names; must contain either no, one, or three elements; If empty, the first band is used to produce a grayscale image
-     * @param zlim_min minimum color value per channel (if vector has size 1 but three bands are provided, the same value is used for all bands)
-     * @param zlim_max maximum color value per channel (if vector has size 1 but three bands are provided, the same value is used for all bands)
-     * @param gamma gamma correction factor to be applied
-     * @param na_color = {}
-     * @param na_transparent if true, the resulting image will cintain an alpha channel, where NA values will be assigned alpha = 0%
-     * @param creation_options key value pairs passed to GDAL as PNG creation options (see https://gdal.org/drivers/raster/png.html)
-     * @param drop_empty_slices if true, empty time slices will be skipped; not yet implemented
-     * @param p chunk processor instance, defaults to the global configuration
-     *
-     * @note argument `drop_empty_slices` is not yet implemented.
-     *
-     * @note This function can be used to create single-band grayscale or three-bands color RGB plots.
-     * If bands is empty, the first band of the data cube will be used to produce a single-band grayscale image. If
-     * three bands are provided, they are interpreted in the order R,G,B. Depsite the number of provided bands,
-     * the color scale defined by zlim_min and zlim_max may be provided as single element vectors in which case the values are used for all color channels, or as
-     * three element vectors with separate scales for each RGB channel. If na_color is not empty, it can be used to set the color values of NA pixels either as a single gray value or as three separate RGB values.
-     * In the case of producing a single band grayscale image but three separate vlaues as na_color, the output image will contain three channels with gray values (R=G=B) for non-NA pixels and the na_color for NA values.
-     * Notice that if na_transparent is true, na_color is ignored.
-     * Further creation options can be used, e.g., to control the compression level of PNG files.
-     */
-    void write_png_collection(std::string dir, std::string prefix = "",
-                              std::vector<std::string> bands = {}, std::vector<double> zlim_min = {0}, std::vector<double> zlim_max = {255}, double gamma = 1, std::vector<uint8_t> na_color = {}, bool na_transparent = true,
-                              std::map<std::string, std::string> creation_options = std::map<std::string, std::string>(),
-                              bool drop_empty_slices = false,
-                              std::shared_ptr<chunk_processor> p = config::instance()->get_default_chunk_processor());
 
     /**
      * Get the cube's bands

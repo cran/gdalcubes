@@ -93,8 +93,8 @@ gc_create_view <- function(v) {
     .Call('_gdalcubes_gc_create_view', PACKAGE = 'gdalcubes', v)
 }
 
-gc_create_image_collection_cube <- function(pin, chunk_sizes, mask, v = NULL) {
-    .Call('_gdalcubes_gc_create_image_collection_cube', PACKAGE = 'gdalcubes', pin, chunk_sizes, mask, v)
+gc_create_image_collection_cube <- function(pin, chunk_sizes, mask, strict = TRUE, v = NULL) {
+    .Call('_gdalcubes_gc_create_image_collection_cube', PACKAGE = 'gdalcubes', pin, chunk_sizes, mask, strict, v)
 }
 
 gc_create_ncdf_cube <- function(path, chunk_sizes, auto_unpack) {
@@ -125,8 +125,8 @@ gc_create_rename_bands_cube <- function(pin, names_old, names_new) {
     .Call('_gdalcubes_gc_create_rename_bands_cube', PACKAGE = 'gdalcubes', pin, names_old, names_new)
 }
 
-gc_create_reduce_time_cube <- function(pin, reducers, bands) {
-    .Call('_gdalcubes_gc_create_reduce_time_cube', PACKAGE = 'gdalcubes', pin, reducers, bands)
+gc_create_reduce_time_cube <- function(pin, reducers, bands, names = NULL) {
+    .Call('_gdalcubes_gc_create_reduce_time_cube', PACKAGE = 'gdalcubes', pin, reducers, bands, names)
 }
 
 gc_create_stream_reduce_time_cube <- function(pin, cmd, nbands, names) {
@@ -137,8 +137,8 @@ gc_create_stream_reduce_space_cube <- function(pin, cmd, nbands, names) {
     .Call('_gdalcubes_gc_create_stream_reduce_space_cube', PACKAGE = 'gdalcubes', pin, cmd, nbands, names)
 }
 
-gc_create_reduce_space_cube <- function(pin, reducers, bands) {
-    .Call('_gdalcubes_gc_create_reduce_space_cube', PACKAGE = 'gdalcubes', pin, reducers, bands)
+gc_create_reduce_space_cube <- function(pin, reducers, bands, names = NULL) {
+    .Call('_gdalcubes_gc_create_reduce_space_cube', PACKAGE = 'gdalcubes', pin, reducers, bands, names)
 }
 
 gc_create_window_time_cube_reduce <- function(pin, window, reducers, bands) {
@@ -147,6 +147,14 @@ gc_create_window_time_cube_reduce <- function(pin, window, reducers, bands) {
 
 gc_create_window_time_cube_kernel <- function(pin, window, kernel) {
     .Call('_gdalcubes_gc_create_window_time_cube_kernel', PACKAGE = 'gdalcubes', pin, window, kernel)
+}
+
+gc_create_window_space_cube_reduce <- function(pin, reducers, bands, win_size_y, win_size_x, keep_bands, pad_mode, pad_fill) {
+    .Call('_gdalcubes_gc_create_window_space_cube_reduce', PACKAGE = 'gdalcubes', pin, reducers, bands, win_size_y, win_size_x, keep_bands, pad_mode, pad_fill)
+}
+
+gc_create_window_space_cube_kernel <- function(pin, kernel, win_size_y, win_size_x, keep_bands, pad_mode, pad_fill) {
+    .Call('_gdalcubes_gc_create_window_space_cube_kernel', PACKAGE = 'gdalcubes', pin, kernel, win_size_y, win_size_x, keep_bands, pad_mode, pad_fill)
 }
 
 gc_create_join_bands_cube <- function(pin_list, cube_names) {
@@ -201,8 +209,8 @@ gc_create_stream_cube <- function(pin, cmd) {
     .Call('_gdalcubes_gc_create_stream_cube', PACKAGE = 'gdalcubes', pin, cmd)
 }
 
-gc_create_simple_cube <- function(files, datetime_values, bands, band_names, dx, dy, chunk_sizes) {
-    .Call('_gdalcubes_gc_create_simple_cube', PACKAGE = 'gdalcubes', files, datetime_values, bands, band_names, dx, dy, chunk_sizes)
+gc_create_simple_cube <- function(files, datetime_values, bands, band_names, dx, dy, chunk_sizes, strict = TRUE) {
+    .Call('_gdalcubes_gc_create_simple_cube', PACKAGE = 'gdalcubes', files, datetime_values, bands, band_names, dx, dy, chunk_sizes, strict)
 }
 
 gc_create_fill_time_cube <- function(pin, method) {

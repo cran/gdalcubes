@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    Copyright (c) 2019 Marius Appel <marius.appel@uni-muenster.de>
+    Copyright (c) 2019 Marius Appel <marius.appel@hs-bochum.de>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -580,6 +580,15 @@ std::shared_ptr<chunk_data> reduce_time_cube::read_chunk(chunkid_t id) {
     bool initialized = false; // lazy initialization after the first non-empty chunk
     for (chunkid_t i = id; i < _in_cube->count_chunks(); i += _in_cube->count_chunks_x() * _in_cube->count_chunks_y()) {
         std::shared_ptr<chunk_data> x = _in_cube->read_chunk(i);
+
+        // propagate chunk status
+        if (x->status() == chunk_data::chunk_status::ERROR) {
+            out->set_status(chunk_data::chunk_status::ERROR);
+        }
+        else if (x->status() == chunk_data::chunk_status::INCOMPLETE && out->status() != chunk_data::chunk_status::ERROR) {
+            out->set_status(chunk_data::chunk_status::INCOMPLETE);
+        }
+
         if (!x->empty()) {
             if (!initialized) {
                 // Fill buffers with NAN
@@ -600,7 +609,9 @@ std::shared_ptr<chunk_data> reduce_time_cube::read_chunk(chunkid_t id) {
         }
     }
     if (empty) {
+       auto s = out->status();
        out =  std::make_shared<chunk_data>();
+       out->set_status(s);
     }
     else {
         for (uint16_t i = 0; i < _reducer_bands.size(); ++i) {

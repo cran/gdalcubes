@@ -4,7 +4,15 @@
 \alias{apply_time.cube}
 \title{Apply a user-defined R function over (multi-band) pixel time series}
 \usage{
-\method{apply_time}{cube}(x, names = NULL, keep_bands = FALSE, FUN, ...)
+\method{apply_time}{cube}(
+  x,
+  names = NULL,
+  keep_bands = FALSE,
+  FUN,
+  load_pkgs = FALSE,
+  load_env = FALSE,
+  ...
+)
 }
 \arguments{
 \item{x}{source data cube}
@@ -14,6 +22,10 @@
 \item{keep_bands}{logical; keep bands of input data cube, defaults to FALSE, i.e., original bands will be dropped}
 
 \item{FUN}{user-defined R function that is applied on all pixel time series (see Details)}
+
+\item{load_pkgs}{logical or character; if TRUE, all currently attached packages will be attached automatically before executing FUN in spawned R processes, specific packages can alternatively be provided as a character vector.}
+
+\item{load_env}{logical or environment; if TRUE, the current global environment will be restored automatically before executing FUN in spawned R processes, can be set to a custom environment.}
 
 \item{...}{not used}
 }
@@ -29,8 +41,11 @@ NA filling, or similar.
 }
 \details{
 FUN receives a single (multi-band) pixel time series as a matrix with rows corresponding to bands and columns corresponding to time.
-In general, the function must return a matrix with the same number of columns. If re result contains only a single band, it may alternatively return a vector 
+In general, the function must return a matrix with the same number of columns. If the result contains only a single band, it may alternatively return a vector 
 with length identical to the length of the input time series (number of columns of the input).
+
+For more details and examples on how to write user-defined functions, please refer to the gdalcubes website 
+at \url{https://gdalcubes.github.io/source/concepts/udfs.html}.
 }
 \note{
 This function returns a proxy object, i.e., it will not start any computations besides deriving the shape of the result.
